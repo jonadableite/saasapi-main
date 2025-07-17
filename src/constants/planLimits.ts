@@ -16,8 +16,8 @@ export const PLAN_LIMITS = {
     support: 'basic',
   },
   pro: {
-    numbers: 5,
-    messagesPerDay: 500,
+    numbers: 99,
+    messagesPerDay: 99999,
     features: [
       'text',
       'audio',
