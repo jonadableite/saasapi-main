@@ -1,14 +1,12 @@
 // src/controllers/warmup.controller.ts
-import type { Request, Response } from "express";
-import { prisma } from "../lib/prisma";
-import { warmupService } from "../services/warmup.service";
-import type { MediaContent, WarmupConfig } from "../types/warmup";
+import type { Request, Response } from 'express';
+import { prisma } from '../lib/prisma';
+import { warmupService } from '../services/warmup.service';
+import type { MediaContent, WarmupConfig } from '../types/warmup';
 
 interface TextContent {
   text: string;
 }
-
-// src/controllers/warmup.controller.ts
 
 export const configureWarmup = async (
   req: Request,
@@ -18,7 +16,7 @@ export const configureWarmup = async (
     const config = req.body;
     const userId = (req as any).user?.id;
 
-    console.log("Iniciando configuração de aquecimento:", {
+    console.log('Iniciando configuração de aquecimento:', {
       userId,
       instancesCount: config.phoneInstances?.length,
       textsCount: config.contents?.texts?.length,
@@ -28,22 +26,25 @@ export const configureWarmup = async (
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Usuário não autenticado",
+        message: 'Usuário não autenticado',
       });
     }
 
     // Validações básicas
-    if (!config.phoneInstances?.length || config.phoneInstances.length < 2) {
+    if (
+      !config.phoneInstances?.length ||
+      config.phoneInstances.length < 2
+    ) {
       return res.status(400).json({
         success: false,
-        message: "Necessário pelo menos duas instâncias",
+        message: 'Necessário pelo menos duas instâncias',
       });
     }
 
     if (!config.contents?.texts?.length) {
       return res.status(400).json({
         success: false,
-        message: "Necessário pelo menos um texto",
+        message: 'Necessário pelo menos um texto',
       });
     }
 
@@ -53,20 +54,24 @@ export const configureWarmup = async (
         .map((item) => {
           if (!item) return null;
 
-          console.log("Processando item de mídia:", item);
+          console.log('Processando item de mídia:', item);
 
           return {
-            type: item.type as "image" | "video" | "audio" | "sticker",
-            base64: typeof item === "string" ? item : item.base64,
+            type: item.type as
+              | 'image'
+              | 'video'
+              | 'audio'
+              | 'sticker',
+            base64: typeof item === 'string' ? item : item.base64,
             fileName: item.fileName || `file.${item.type}`,
             mimetype:
-              item.type === "image"
-                ? "image/jpeg"
-                : item.type === "video"
-                  ? "video/mp4"
-                  : item.type === "audio"
-                    ? "audio/mp3"
-                    : "image/webp",
+              item.type === 'image'
+                ? 'image/jpeg'
+                : item.type === 'video'
+                ? 'video/mp4'
+                : item.type === 'audio'
+                ? 'audio/mp3'
+                : 'image/webp',
             preview: item.preview,
           };
         })
@@ -78,22 +83,23 @@ export const configureWarmup = async (
       userId, // Removido Number(), mantendo como string
       phoneInstances: config.phoneInstances,
       contents: {
-        texts: config.contents.texts.map((text: string | TextContent) =>
-          typeof text === "string" ? text : text.text,
+        texts: config.contents.texts.map(
+          (text: string | TextContent) =>
+            typeof text === 'string' ? text : text.text,
         ),
         images: processMedia(config.contents.images),
         audios: processMedia(config.contents.audios),
         videos: processMedia(config.contents.videos),
         stickers: processMedia(config.contents.stickers),
         emojis: config.contents.emojis || [
-          "👍",
-          "❤️",
-          "😂",
-          "😮",
-          "😢",
-          "🙏",
-          "👏",
-          "🔥",
+          '👍',
+          '❤️',
+          '😂',
+          '😮',
+          '😢',
+          '🙏',
+          '👏',
+          '🔥',
         ],
       },
       config: {
@@ -118,23 +124,23 @@ export const configureWarmup = async (
     const status = await prisma.warmupStats.findMany({
       where: {
         userId,
-        status: "active",
+        status: 'active',
       },
     });
 
     return res.status(200).json({
       success: true,
-      message: "Aquecimento iniciado com sucesso",
+      message: 'Aquecimento iniciado com sucesso',
       isActive: status.length > 0,
     });
   } catch (error) {
-    console.error("Erro ao configurar aquecimento:", error);
+    console.error('Erro ao configurar aquecimento:', error);
     return res.status(500).json({
       success: false,
       message:
         error instanceof Error
           ? error.message
-          : "Erro ao configurar aquecimento",
+          : 'Erro ao configurar aquecimento',
     });
   }
 };
@@ -151,14 +157,14 @@ export const stopWarmup = async (
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Usuário não autenticado",
+        message: 'Usuário não autenticado',
       });
     }
 
     if (!instanceId) {
       return res.status(400).json({
         success: false,
-        message: "ID da instância não fornecido",
+        message: 'ID da instância não fornecido',
       });
     }
 
@@ -166,14 +172,16 @@ export const stopWarmup = async (
 
     return res.status(200).json({
       success: true,
-      message: "Aquecimento parado com sucesso",
+      message: 'Aquecimento parado com sucesso',
     });
   } catch (error) {
-    console.error("Erro ao parar aquecimento:", error);
+    console.error('Erro ao parar aquecimento:', error);
     return res.status(500).json({
       success: false,
       message:
-        error instanceof Error ? error.message : "Erro ao parar aquecimento",
+        error instanceof Error
+          ? error.message
+          : 'Erro ao parar aquecimento',
     });
   }
 };
@@ -189,7 +197,7 @@ export const stopAllWarmups = async (
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Usuário não autenticado",
+        message: 'Usuário não autenticado',
       });
     }
 
@@ -202,21 +210,23 @@ export const stopAllWarmups = async (
         userId: userId,
       },
       data: {
-        status: "paused",
+        status: 'paused',
         pauseTime: new Date(),
       },
     });
 
     return res.status(200).json({
       success: true,
-      message: "Todos os aquecimentos foram parados",
+      message: 'Todos os aquecimentos foram parados',
     });
   } catch (error) {
-    console.error("Erro ao parar aquecimentos:", error);
+    console.error('Erro ao parar aquecimentos:', error);
     return res.status(500).json({
       success: false,
       message:
-        error instanceof Error ? error.message : "Erro ao parar aquecimentos",
+        error instanceof Error
+          ? error.message
+          : 'Erro ao parar aquecimentos',
     });
   }
 };
@@ -233,14 +243,14 @@ export const getWarmupStats = async (
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Usuário não autenticado",
+        message: 'Usuário não autenticado',
       });
     }
 
     if (!instanceId) {
       return res.status(400).json({
         success: false,
-        message: "ID da instância não fornecido",
+        message: 'ID da instância não fornecido',
       });
     }
 
@@ -255,7 +265,7 @@ export const getWarmupStats = async (
     if (!stats) {
       return res.status(404).json({
         success: false,
-        message: "Estatísticas não encontradas",
+        message: 'Estatísticas não encontradas',
       });
     }
 
@@ -264,11 +274,13 @@ export const getWarmupStats = async (
       stats,
     });
   } catch (error) {
-    console.error("Erro ao obter estatísticas:", error);
+    console.error('Erro ao obter estatísticas:', error);
     return res.status(500).json({
       success: false,
       message:
-        error instanceof Error ? error.message : "Erro ao obter estatísticas",
+        error instanceof Error
+          ? error.message
+          : 'Erro ao obter estatísticas',
     });
   }
 };
@@ -284,7 +296,7 @@ export const getWarmupStatus = async (
     if (!userId) {
       return res.status(401).json({
         success: false,
-        message: "Usuário não autenticado",
+        message: 'Usuário não autenticado',
       });
     }
 
@@ -317,16 +329,16 @@ export const getWarmupStatus = async (
       instances: instanceStatuses,
       // Se houver pelo menos uma instância ativa, considera o aquecimento ativo
       globalStatus: Object.values(instanceStatuses).some(
-        (inst) => inst.status === "active",
+        (inst) => inst.status === 'active',
       )
-        ? "active"
-        : "inactive",
+        ? 'active'
+        : 'inactive',
     });
   } catch (error) {
-    console.error("Erro ao obter status:", error);
+    console.error('Erro ao obter status:', error);
     return res.status(500).json({
       success: false,
-      message: "Erro ao obter status do aquecimento",
+      message: 'Erro ao obter status do aquecimento',
     });
   }
 };

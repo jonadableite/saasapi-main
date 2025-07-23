@@ -7,18 +7,18 @@ import type {
   MessageLog,
   User,
   WarmupStats,
-} from "@prisma/client";
-import type { Request, Response } from "express";
-import type { ParamsDictionary } from "express-serve-static-core";
-import type { MessageType } from "../enum";
-import type { CampaignStatus } from "./types";
+} from '@prisma/client';
+import type { Request, Response } from 'express';
+import type { ParamsDictionary } from 'express-serve-static-core';
+import type { MessageType } from '../enum';
+import type { CampaignStatus } from './types';
 export type MessageStatus =
-  | "PENDING"
-  | "SENT"
-  | "RECEIVED"
-  | "DELIVERED"
-  | "READ"
-  | "FAILED";
+  | 'PENDING'
+  | 'SENT'
+  | 'RECEIVED'
+  | 'DELIVERED'
+  | 'READ'
+  | 'FAILED';
 
 export interface StatusHistoryEntry {
   status: MessageStatus;
@@ -135,7 +135,7 @@ export interface StartCampaignRequest extends RequestWithUser {
     instanceName: string;
     message?: string;
     media?: {
-      type: "image" | "video" | "audio";
+      type: 'image' | 'video' | 'audio';
       base64: string;
       fileName?: string;
       mimetype?: string;
@@ -157,7 +157,7 @@ export interface BaseCampaignRequest extends Request {
     message?: string;
     minDelay?: number;
     maxDelay?: number;
-    mediaType?: "image" | "video" | "audio";
+    mediaType?: 'image' | 'video' | 'audio';
     mediaContent?: string;
     mediaCaption?: string;
     fileName?: string;
@@ -181,14 +181,14 @@ export interface SegmentationRule {
 }
 
 export type InstanceStatus =
-  | "OPEN"
-  | "CLOSE"
-  | "CLOSED"
-  | "CONNECTED"
-  | "DISCONNECTED"
-  | "CONNECTING"
-  | "OFFLINE"
-  | "ERROR";
+  | 'OPEN'
+  | 'CLOSE'
+  | 'CLOSED'
+  | 'CONNECTED'
+  | 'DISCONNECTED'
+  | 'CONNECTING'
+  | 'OFFLINE'
+  | 'ERROR';
 export interface Dispatch {
   id: string;
   campaignId: string;
@@ -209,7 +209,7 @@ export interface IMessageDispatcherService {
     instanceName: string;
     message: string;
     media?: {
-      type: "image" | "video" | "audio";
+      type: 'image' | 'video' | 'audio';
       base64: string;
       url?: string;
       caption?: string;
@@ -232,7 +232,7 @@ export interface IMessageDispatcherService {
     phone: string;
     message: string;
     media?: {
-      type: "image" | "video" | "audio";
+      type: 'image' | 'video' | 'audio';
       url?: string;
       base64?: string;
       caption?: string;
@@ -264,7 +264,7 @@ export interface IMessageDispatcherService {
 }
 
 export interface MediaParams {
-  type: "image" | "video" | "audio";
+  type: 'image' | 'video' | 'audio';
   content: string;
   caption?: string;
 }
@@ -273,7 +273,7 @@ export interface CampaignParams {
   instanceName: string;
   message: string;
   media?: {
-    type: "image" | "video" | "audio";
+    type: 'image' | 'video' | 'audio';
     content: string;
     base64?: string;
     caption?: string;
@@ -295,7 +295,7 @@ export interface MessageDispatchParams {
   maxDelay: number;
 }
 export interface MessageContent {
-  type: "image" | "video" | "audio" | "sticker";
+  type: 'image' | 'video' | 'audio' | 'sticker';
   base64: string;
   url?: string;
   content?: string;
@@ -305,22 +305,23 @@ export interface MessageContent {
   preview?: string;
 }
 
-export interface CampaignRequestWithSegment extends CampaignRequestWithId {
-  params: CampaignRequestWithId["params"] & {
+export interface CampaignRequestWithSegment
+  extends CampaignRequestWithId {
+  params: CampaignRequestWithId['params'] & {
     segment?: string;
   };
 }
 
-export interface UpdateCampaignStatusRequest extends CampaignRequestWithId {
+export interface UpdateCampaignStatusRequest
+  extends CampaignRequestWithId {
   body: {
     status: CampaignStatus;
   };
 }
 
 export interface MediaContent {
-  type: "image" | "video" | "audio";
-  base64: string;
-  url?: string;
+  type: 'image' | 'video' | 'audio';
+  media: string;
   fileName?: string;
   mimetype?: string;
   caption?: string;
@@ -339,7 +340,10 @@ export interface ICampaignSchedulerService {
   getSchedules(campaignId: string): Promise<any>;
   cancelSchedule(scheduleId: string): Promise<void>;
   pauseCampaign(campaignId: string): Promise<void>;
-  resumeCampaign(campaignId: string, instanceName: string): Promise<void>;
+  resumeCampaign(
+    campaignId: string,
+    instanceName: string,
+  ): Promise<void>;
 }
 
 export interface ScheduleWithRelations extends CampaignSchedule {
@@ -352,7 +356,7 @@ export interface ScheduleWithRelations extends CampaignSchedule {
 }
 
 export interface CampaignMedia {
-  type: "image" | "video" | "audio";
+  type: 'image' | 'video' | 'audio';
   content: string;
   caption?: string;
 }
@@ -372,7 +376,7 @@ export interface CreateScheduleParams {
   scheduledDate: Date;
   message?: string;
   mediaPayload?: {
-    type: "image" | "video" | "audio";
+    type: 'image' | 'video' | 'audio';
     base64: string;
     caption?: string;
     fileName?: string;
@@ -531,7 +535,7 @@ export interface SendMessageOptions {
   number: string;
   text?: string;
   media?: string;
-  mediaType?: "image" | "video" | "document" | "audio";
+  mediaType?: 'image' | 'video' | 'document' | 'audio';
   caption?: string;
   fileName?: string;
   delay?: number;

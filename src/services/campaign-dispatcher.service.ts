@@ -331,7 +331,7 @@ export class MessageDispatcherService
     message: string;
     media?: {
       type: 'image' | 'video' | 'audio';
-      base64: string;
+      media: string;
       url?: string;
       caption?: string;
     };
@@ -349,7 +349,7 @@ export class MessageDispatcherService
         let response: EvolutionApiResponse | undefined;
 
         // **Enviar mídia primeiro, se houver**
-        if (params.media?.base64) {
+        if (params.media?.media) {
           const mediaLogger = logger.setContext('Media');
           mediaLogger.info('Enviando mídia...');
           response = await this.sendMedia(
@@ -409,7 +409,6 @@ export class MessageDispatcherService
       const leads = await prisma.campaignLead.findMany({
         where: {
           campaignId: params.campaignId,
-          // biome-ignore lint/style/useNamingConvention: <explanation>
           OR: [
             { status: 'PENDING' },
             { status: 'FAILED' },
@@ -611,9 +610,8 @@ export class MessageDispatcherService
     instanceName: string,
     phone: string,
     media: {
-      type: 'image' | 'video' | 'audio' | 'document'; // Adicionado 'document'
-      base64?: string; // Tornou-se opcional
-      url?: string; // Adicionado 'url'
+      type: 'image' | 'video' | 'audio';
+      media: string; // ← Já vem como 'media' do controller
       caption?: string;
       fileName?: string;
       mimetype?: string;
@@ -624,48 +622,34 @@ export class MessageDispatcherService
       : `55${phone}`;
 
     try {
-      // Verifica se pelo menos base64 ou URL foi fornecido
-      if (!media.base64 && !media.url) {
-        throw new Error(
-          'O conteúdo da mídia (base64 ou URL) é obrigatório.',
-        );
-      }
-
       let endpoint = '';
       let payload: any = {
         number: formattedNumber,
         delay: 1000,
       };
 
-      // Determina o conteúdo real da mídia a ser enviado (URL ou base64)
-      const mediaContent = media.url || media.base64;
-
       switch (media.type) {
         case 'image':
-        case 'video':
-        case 'document': // Adicionado o caso 'document'
           endpoint = `/message/sendMedia/${instanceName}`;
           payload = {
             ...payload,
-            mediatype: media.type, // Usa media.type diretamente para mediatype
-            media: mediaContent, // Usa o mediaContent determinado (URL ou base64)
+            mediatype: 'image',
+            media: media.media, // ✅ Correção: use media.media em vez de media.base64
             caption: media.caption,
-            fileName:
-              media.fileName ||
-              `${media.type}.${
-                media.type === 'image'
-                  ? 'jpg'
-                  : media.type === 'video'
-                  ? 'mp4'
-                  : 'pdf'
-              }`, // Nome de arquivo padrão baseado no tipo
-            mimetype:
-              media.mimetype ||
-              (media.type === 'image'
-                ? 'image/jpeg'
-                : media.type === 'video'
-                ? 'video/mp4'
-                : 'application/pdf'), // Mimetype padrão
+            fileName: media.fileName || 'image.jpg',
+            mimetype: media.mimetype || 'image/jpeg',
+          };
+          break;
+
+        case 'video':
+          endpoint = `/message/sendMedia/${instanceName}`;
+          payload = {
+            ...payload,
+            mediatype: 'video',
+            media: media.media, // ✅ Correção: use media.media em vez de media.base64
+            caption: media.caption,
+            fileName: media.fileName || 'video.mp4',
+            mimetype: media.mimetype || 'video/mp4',
           };
           break;
 
@@ -673,20 +657,26 @@ export class MessageDispatcherService
           endpoint = `/message/sendWhatsAppAudio/${instanceName}`;
           payload = {
             ...payload,
-            audio: mediaContent, // Usa o mediaContent determinado (URL ou base64)
+            audio: media.media, // ✅ Correção: use media.media em vez de media.base64
             encoding: true,
           };
           break;
-        default:
-          throw new Error(
-            `Tipo de mídia não suportado: ${media.type}`,
-          );
       }
 
       const disparoLogger = logger.setContext('Disparo');
       disparoLogger.info(
         `Enviando ${media.type} para ${phone} usando instância ${instanceName}`,
       );
+
+      // ✅ Adicione log do payload para debug
+      disparoLogger.info('Payload enviado para Evolution API:', {
+        endpoint: `${URL_API}${endpoint}`,
+        payload: {
+          ...payload,
+          media: payload.media ? '[BASE64_DATA]' : undefined,
+          audio: payload.audio ? '[BASE64_DATA]' : undefined,
+        },
+      });
 
       const response = await axios.post<EvolutionApiResponse>(
         `${URL_API}${endpoint}`,
@@ -708,10 +698,13 @@ export class MessageDispatcherService
       return response.data;
     } catch (error) {
       const disparoErrorLogger = logger.setContext('DisparoError');
-      disparoErrorLogger.error(
-        `Erro ao enviar ${media.type}:`,
-        error,
-      );
+      disparoErrorLogger.error(`Erro ao enviar ${media.type}:`, {
+        error: error.response?.data || error.message,
+        instanceName,
+        phone,
+        mediaType: media.type,
+        details: error.response?.data || 'Erro desconhecido',
+      });
       throw error;
     }
   }
@@ -836,7 +829,6 @@ export class MessageDispatcherService
 
     return stats.reduce(
       (acc, curr) => ({
-        // biome-ignore lint/performance/noAccumulatingSpread: <explanation>
         ...acc,
         [curr.status]: curr._count.status,
       }),
