@@ -128,19 +128,11 @@ export interface AxiosErrorResponse {
 }
 
 export interface StartCampaignRequest extends RequestWithUser {
-  params: {
-    id: string;
-  };
+  params: { id: string };
   body: {
     instanceName: string;
     message?: string;
-    media?: {
-      type: 'image' | 'video' | 'audio';
-      base64: string;
-      fileName?: string;
-      mimetype?: string;
-      caption?: string;
-    };
+    media?: MediaContent;
     minDelay?: number;
     maxDelay?: number;
   };
@@ -203,20 +195,13 @@ export interface Dispatch {
   updatedAt: string;
 }
 
+// biome-ignore lint/style/useNamingConvention: <explanation>
 export interface IMessageDispatcherService {
   startDispatch(params: {
     campaignId: string;
     instanceName: string;
     message: string;
-    media?: {
-      type: 'image' | 'video' | 'audio';
-      base64: string;
-      url?: string;
-      caption?: string;
-      fileName?: string;
-      mimetype?: string;
-      preview?: string;
-    };
+    media?: MediaContent;
     minDelay: number;
     maxDelay: number;
   }): Promise<void>;
@@ -272,16 +257,7 @@ export interface CampaignParams {
   campaignId: string;
   instanceName: string;
   message: string;
-  media?: {
-    type: 'image' | 'video' | 'audio';
-    content: string;
-    base64?: string;
-    caption?: string;
-    fileName?: string;
-    mimetype?: string;
-    preview?: string;
-    url?: string;
-  } | null;
+  media?: MediaContent;
   minDelay: number;
   maxDelay: number;
 }
@@ -321,11 +297,13 @@ export interface UpdateCampaignStatusRequest
 
 export interface MediaContent {
   type: 'image' | 'video' | 'audio';
-  media: string;
-  fileName?: string;
-  mimetype?: string;
-  caption?: string;
-  preview?: string;
+  media?: string; // URL da mídia
+  base64?: string; // Base64 da mídia
+  content?: string; // Para compatibilidade
+  url?: string; // URL alternativa
+  caption?: string; // Legenda
+  fileName?: string; // Nome do arquivo
+  mimetype?: string; // Tipo MIME
 }
 
 export interface ICampaignDispatcherController {

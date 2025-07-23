@@ -147,7 +147,7 @@ export class CampaignDispatcherController {
         media: campaign.mediaUrl
           ? {
               type: campaign.mediaType as 'image' | 'video' | 'audio',
-              content: campaign.mediaUrl,
+              media: campaign.mediaUrl,
               caption: campaign.mediaCaption ?? undefined,
             }
           : undefined,
@@ -265,7 +265,7 @@ export class CampaignDispatcherController {
         media: campaign.mediaUrl
           ? {
               type: campaign.mediaType as 'image' | 'video' | 'audio',
-              content: campaign.mediaUrl,
+              media: campaign.mediaUrl,
               caption: campaign.mediaCaption ?? undefined,
             }
           : undefined,

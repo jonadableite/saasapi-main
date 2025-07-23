@@ -1185,12 +1185,10 @@ export default class CampaignController {
       });
     } catch (error) {
       logger.error('Erro ao retomar campanha:', error);
-      res
-        .status(500)
-        .json({
-          success: false,
-          message: 'Erro ao retomar campanha',
-        });
+      res.status(500).json({
+        success: false,
+        message: 'Erro ao retomar campanha',
+      });
     }
   }
 

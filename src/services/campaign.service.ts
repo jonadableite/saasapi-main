@@ -313,15 +313,7 @@ export class CampaignService {
       campaignId: params.campaignId,
       instanceName: instance.instanceName,
       message: params.message,
-      media: params.media
-        ? {
-            type: params.media.type,
-            base64: params.media.content, // Usar params.media.content para base64
-            caption: params.media.caption || undefined,
-            fileName: `file_${Date.now()}`,
-            mimetype: this.getMimeType(params.media.type),
-          }
-        : undefined,
+      media: params.media,
       minDelay: params.minDelay,
       maxDelay: params.maxDelay,
     });

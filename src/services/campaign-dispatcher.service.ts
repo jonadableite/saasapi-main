@@ -147,13 +147,22 @@ export class MessageDispatcherService
           let response: EvolutionApiResponse | undefined;
 
           // **Enviar mídia primeiro, se houver**
-          if (params.media) {
+          if (params.media?.media) {
             const mediaLogger = logger.setContext('Mídia');
             mediaLogger.info('Enviando mídia...');
             response = await this.sendMedia(
               params.instanceName,
               lead.phone,
-              params.media,
+              {
+                type: params.media.type as
+                  | 'image'
+                  | 'video'
+                  | 'audio',
+                media: params.media.media,
+                caption: params.media.caption,
+                fileName: params.media.fileName,
+                mimetype: params.media.mimetype,
+              },
             );
           }
 
@@ -355,10 +364,13 @@ export class MessageDispatcherService
           response = await this.sendMedia(
             params.instanceName,
             formattedNumber,
-            params.media,
+            {
+              type: params.media.type,
+              media: params.media.media,
+              caption: params.media.caption,
+            },
           );
         }
-
         // **Enviar mensagem de texto, mesmo que não haja mídia**
         if (params.message && params.message.trim().length > 0) {
           const messageLogger = logger.setContext('Message');
@@ -471,7 +483,7 @@ export class MessageDispatcherService
                       | 'image'
                       | 'video'
                       | 'audio',
-                    base64: campaign.mediaUrl,
+                    media: campaign.mediaUrl,
                     url: campaign.mediaUrl,
                     caption: campaign.mediaCaption || undefined,
                   }

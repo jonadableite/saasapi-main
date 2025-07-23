@@ -1,10 +1,13 @@
 // src/services/campaign-scheduler.service.ts
 
-import { type Job, scheduleJob } from "node-schedule";
-import { BadRequestError } from "../errors/AppError";
-import type { CreateScheduleParams, ScheduleWithRelations } from "../interface";
-import { prisma } from "../lib/prisma";
-import { campaignService } from "./campaign.service";
+import { type Job, scheduleJob } from 'node-schedule';
+import { BadRequestError } from '../errors/AppError';
+import type {
+  CreateScheduleParams,
+  ScheduleWithRelations,
+} from '../interface';
+import { prisma } from '../lib/prisma';
+import { campaignService } from './campaign.service';
 
 /**
  * Serviço responsável por gerenciar o agendamento de campanhas.
@@ -22,41 +25,45 @@ export class CampaignSchedulerService {
    */
   private async initializeScheduledJobs() {
     try {
-      const pendingSchedules = await prisma.campaignSchedule.findMany({
-        where: {
-          status: "pending",
-          scheduledDate: {
-            gt: new Date(),
+      const pendingSchedules = await prisma.campaignSchedule.findMany(
+        {
+          where: {
+            status: 'pending',
+            scheduledDate: {
+              gt: new Date(),
+            },
+          },
+          include: {
+            campaign: true,
+            instance: true,
           },
         },
-        include: {
-          campaign: true,
-          instance: true,
-        },
-      });
+      );
 
       pendingSchedules.forEach((schedule) => {
         this.scheduleJob(schedule);
       });
     } catch (error) {
-      console.error("Erro ao inicializar agendamentos:", error);
+      console.error('Erro ao inicializar agendamentos:', error);
     }
   }
 
   /**
    * Valida se a instância está conectada e disponível.
    */
-  private async validateInstance(instanceName: string): Promise<void> {
+  private async validateInstance(
+    instanceName: string,
+  ): Promise<void> {
     const instance = await prisma.instance.findUnique({
       where: { instanceName },
     });
 
     if (!instance) {
-      throw new BadRequestError("Instância não encontrada");
+      throw new BadRequestError('Instância não encontrada');
     }
 
-    if (instance.connectionStatus !== "OPEN") {
-      throw new BadRequestError("Instância não está conectada");
+    if (instance.connectionStatus !== 'OPEN') {
+      throw new BadRequestError('Instância não está conectada');
     }
   }
 
@@ -66,7 +73,9 @@ export class CampaignSchedulerService {
   private validateScheduleDate(scheduledDate: Date): void {
     const now = new Date();
     if (scheduledDate <= now) {
-      throw new BadRequestError("Data de agendamento deve ser futura");
+      throw new BadRequestError(
+        'Data de agendamento deve ser futura',
+      );
     }
   }
 
@@ -81,7 +90,7 @@ export class CampaignSchedulerService {
       await prisma.campaignSchedule.update({
         where: { id: scheduleId },
         data: {
-          status: "failed",
+          status: 'failed',
           completedAt: new Date(),
         },
       });
@@ -90,15 +99,17 @@ export class CampaignSchedulerService {
         data: {
           campaignId: scheduleId,
           errorMessage:
-            error instanceof Error ? error.message : "Erro desconhecido",
+            error instanceof Error
+              ? error.message
+              : 'Erro desconhecido',
           errorDetails:
             error instanceof Error
-              ? { stack: error.stack || "" }
-              : { error: "Erro desconhecido" },
+              ? { stack: error.stack || '' }
+              : { error: 'Erro desconhecido' },
         },
       });
     } catch (err) {
-      console.error("Erro ao registrar falha do agendamento:", err);
+      console.error('Erro ao registrar falha do agendamento:', err);
     }
   }
 
@@ -107,18 +118,22 @@ export class CampaignSchedulerService {
    */
   private async scheduleJob(schedule: ScheduleWithRelations) {
     try {
-      console.log(`Agendando job para campanha ${schedule.campaignId}`);
+      console.log(
+        `Agendando job para campanha ${schedule.campaignId}`,
+      );
 
       const job = scheduleJob(schedule.scheduledDate, async () => {
         try {
-          console.log(`Iniciando execução do agendamento ${schedule.id}`);
+          console.log(
+            `Iniciando execução do agendamento ${schedule.id}`,
+          );
 
           // Preparar dados de mídia
           let mediaData = null;
           if (schedule.mediaUrl && schedule.mediaType) {
             mediaData = {
-              type: schedule.mediaType as "image" | "video" | "audio",
-              content: schedule.mediaUrl,
+              type: schedule.mediaType as 'image' | 'video' | 'audio',
+              media: schedule.mediaUrl,
               base64: schedule.mediaUrl,
               caption: schedule.mediaCaption || undefined,
               fileName: `file_${Date.now()}.${schedule.mediaType}`,
@@ -129,7 +144,7 @@ export class CampaignSchedulerService {
           await campaignService.startCampaign({
             campaignId: schedule.campaignId,
             instanceName: schedule.instanceName,
-            message: schedule.message || "",
+            message: schedule.message || '',
             media: mediaData || undefined,
             minDelay: schedule.minDelay,
             maxDelay: schedule.maxDelay,
@@ -138,20 +153,23 @@ export class CampaignSchedulerService {
           await prisma.campaignSchedule.update({
             where: { id: schedule.id },
             data: {
-              status: "completed",
+              status: 'completed',
               completedAt: new Date(),
             },
           });
         } catch (error) {
-          console.error(`Erro ao executar agendamento ${schedule.id}:`, error);
+          console.error(
+            `Erro ao executar agendamento ${schedule.id}:`,
+            error,
+          );
           await this.handleScheduleError(schedule.id, error);
         }
       });
 
       this.scheduledJobs.set(schedule.id, job);
     } catch (error) {
-      console.error("Erro ao agendar job:", error);
-      throw new BadRequestError("Erro ao agendar campanha");
+      console.error('Erro ao agendar job:', error);
+      throw new BadRequestError('Erro ao agendar campanha');
     }
   }
 
@@ -159,17 +177,17 @@ export class CampaignSchedulerService {
    * Retorna o mimetype com base no tipo de mídia.
    */
   private getMimeType(mediaType: string | null): string {
-    if (!mediaType) return "application/octet-stream";
+    if (!mediaType) return 'application/octet-stream';
 
     switch (mediaType.toLowerCase()) {
-      case "image":
-        return "image/jpeg";
-      case "video":
-        return "video/mp4";
-      case "audio":
-        return "audio/mpeg";
+      case 'image':
+        return 'image/jpeg';
+      case 'video':
+        return 'video/mp4';
+      case 'audio':
+        return 'audio/mpeg';
       default:
-        return "application/octet-stream";
+        return 'application/octet-stream';
     }
   }
 
@@ -178,9 +196,9 @@ export class CampaignSchedulerService {
    */
   public async createSchedule(data: CreateScheduleParams) {
     try {
-      console.log("Iniciando criação de agendamento:", {
+      console.log('Iniciando criação de agendamento:', {
         ...data,
-        mediaPayload: data.mediaPayload ? "Present" : "Not present",
+        mediaPayload: data.mediaPayload ? 'Present' : 'Not present',
       });
 
       this.validateScheduleDate(data.scheduledDate);
@@ -211,7 +229,7 @@ export class CampaignSchedulerService {
           mediaCaption: mediaData.mediaCaption,
           minDelay: data.minDelay || 5,
           maxDelay: data.maxDelay || 30,
-          status: "pending",
+          status: 'pending',
         },
         include: {
           campaign: true,
@@ -224,7 +242,7 @@ export class CampaignSchedulerService {
 
       return schedule;
     } catch (error) {
-      console.error("Erro ao criar agendamento:", error);
+      console.error('Erro ao criar agendamento:', error);
       throw error;
     }
   }
@@ -238,7 +256,7 @@ export class CampaignSchedulerService {
     });
 
     if (!schedule) {
-      throw new BadRequestError("Agendamento não encontrado");
+      throw new BadRequestError('Agendamento não encontrado');
     }
 
     const job = this.scheduledJobs.get(scheduleId);
@@ -249,20 +267,20 @@ export class CampaignSchedulerService {
 
     await prisma.campaignSchedule.update({
       where: { id: scheduleId },
-      data: { status: "cancelled" },
+      data: { status: 'cancelled' },
     });
 
     const pendingSchedules = await prisma.campaignSchedule.count({
       where: {
         campaignId: schedule.campaignId,
-        status: "pending",
+        status: 'pending',
       },
     });
 
     if (pendingSchedules === 0) {
       await prisma.campaign.update({
         where: { id: schedule.campaignId },
-        data: { scheduledStatus: "cancelled" },
+        data: { scheduledStatus: 'cancelled' },
       });
     }
   }
@@ -274,7 +292,7 @@ export class CampaignSchedulerService {
     return prisma.campaignSchedule.findMany({
       where: {
         campaignId,
-        OR: [{ status: "pending" }, { status: "running" }],
+        OR: [{ status: 'pending' }, { status: 'running' }],
       },
       include: {
         instance: {
@@ -294,7 +312,7 @@ export class CampaignSchedulerService {
         },
       },
       orderBy: {
-        scheduledDate: "asc",
+        scheduledDate: 'asc',
       },
     });
   }
@@ -308,20 +326,20 @@ export class CampaignSchedulerService {
     });
 
     if (!campaign) {
-      throw new BadRequestError("Campanha não encontrada");
+      throw new BadRequestError('Campanha não encontrada');
     }
 
-    if (campaign.status !== "running") {
-      throw new BadRequestError("Campanha não está em execução");
+    if (campaign.status !== 'running') {
+      throw new BadRequestError('Campanha não está em execução');
     }
 
     await prisma.campaignDispatch.updateMany({
       where: {
         campaignId,
-        status: "running",
+        status: 'running',
       },
       data: {
-        status: "paused",
+        status: 'paused',
         completedAt: new Date(),
       },
     });
@@ -329,16 +347,16 @@ export class CampaignSchedulerService {
     await prisma.campaignSchedule.updateMany({
       where: {
         campaignId,
-        status: "running",
+        status: 'running',
       },
       data: {
-        status: "paused",
+        status: 'paused',
       },
     });
 
-    const scheduledJobs = Array.from(this.scheduledJobs.entries()).filter(
-      ([_, job]) => job.name === campaignId,
-    );
+    const scheduledJobs = Array.from(
+      this.scheduledJobs.entries(),
+    ).filter(([_, job]) => job.name === campaignId);
 
     scheduledJobs.forEach(([id, job]) => {
       job.cancel();
@@ -350,8 +368,8 @@ export class CampaignSchedulerService {
     await prisma.campaign.update({
       where: { id: campaignId },
       data: {
-        status: "paused",
-        scheduledStatus: "paused",
+        status: 'paused',
+        scheduledStatus: 'paused',
         pausedAt: new Date(),
       },
     });
@@ -369,11 +387,11 @@ export class CampaignSchedulerService {
     });
 
     if (!campaign) {
-      throw new BadRequestError("Campanha não encontrada");
+      throw new BadRequestError('Campanha não encontrada');
     }
 
-    if (campaign.status !== "paused") {
-      throw new BadRequestError("Campanha não está pausada");
+    if (campaign.status !== 'paused') {
+      throw new BadRequestError('Campanha não está pausada');
     }
 
     await this.validateInstance(instanceName);
@@ -381,7 +399,7 @@ export class CampaignSchedulerService {
     const pausedSchedules = await prisma.campaignSchedule.findMany({
       where: {
         campaignId,
-        status: "paused",
+        status: 'paused',
       },
       include: {
         campaign: true,
@@ -396,10 +414,10 @@ export class CampaignSchedulerService {
     await prisma.campaignSchedule.updateMany({
       where: {
         campaignId,
-        status: "paused",
+        status: 'paused',
       },
       data: {
-        status: "pending",
+        status: 'pending',
       },
     });
 
@@ -407,7 +425,7 @@ export class CampaignSchedulerService {
       data: {
         campaignId,
         instanceName,
-        status: "running",
+        status: 'running',
         startedAt: new Date(),
       },
     });
@@ -415,8 +433,8 @@ export class CampaignSchedulerService {
     await prisma.campaign.update({
       where: { id: campaignId },
       data: {
-        status: "running",
-        scheduledStatus: "running",
+        status: 'running',
+        scheduledStatus: 'running',
         pausedAt: null,
       },
     });
@@ -424,10 +442,10 @@ export class CampaignSchedulerService {
     await campaignService.startCampaign({
       campaignId,
       instanceName,
-      message: campaign.message || "",
+      message: campaign.message || '',
       media: campaign.mediaUrl
         ? {
-            type: campaign.mediaType as "image" | "video" | "audio",
+            type: campaign.mediaType as 'image' | 'video' | 'audio',
             content: campaign.mediaUrl,
             caption: campaign.mediaCaption ?? undefined,
           }
@@ -440,7 +458,10 @@ export class CampaignSchedulerService {
   /**
    * Atualiza o progresso de uma campanha.
    */
-  public async updateCampaignProgress(campaignId: string, progress: number) {
+  public async updateCampaignProgress(
+    campaignId: string,
+    progress: number,
+  ) {
     await prisma.campaign.update({
       where: { id: campaignId },
       data: {
@@ -450,4 +471,5 @@ export class CampaignSchedulerService {
   }
 }
 
-export const campaignSchedulerService = new CampaignSchedulerService();
+export const campaignSchedulerService =
+  new CampaignSchedulerService();
