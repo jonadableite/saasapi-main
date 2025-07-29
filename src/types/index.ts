@@ -1,11 +1,11 @@
 // src/types/index.ts
-import { User } from "@prisma/client";
-import type { NextFunction, Request, Response } from "express";
-import type { PLAN_LIMITS } from "../constants/planLimits";
+import { User } from '@prisma/client';
+import type { NextFunction, Request, Response } from 'express';
+import type { PLAN_LIMITS } from '../constants/planLimits';
 
-export * from "./campaign.types";
-export * from "./media";
-export * from "./request";
+export * from './campaign.types';
+export * from './media';
+export * from './request';
 
 export interface RequestWithUser extends Request {
   user?: {
@@ -22,10 +22,16 @@ export interface RequestWithUser extends Request {
     };
   };
   planLimits?: (typeof PLAN_LIMITS)[keyof typeof PLAN_LIMITS];
+  instance?: {
+    id: string;
+    instanceName: string;
+    connectionStatus: string;
+    userId: string;
+  };
 }
 
 export interface MediaContent {
-  type: "image" | "video" | "audio" | "sticker";
+  type: 'image' | 'video' | 'audio' | 'sticker';
   base64?: string;
   fileName?: string;
   mimetype?: string;
@@ -39,17 +45,16 @@ export type AuthMiddleware = (
 ) => Promise<undefined | Response>;
 
 export interface EvoIAUser {
-	id: string;
-	name: string;
-	email: string;
-	is_active: boolean;
-	is_admin: boolean;
-	client_id?: string;
-	email_verified?: boolean;
-	created_at?: string;
-	updated_at?: string;
+  id: string;
+  name: string;
+  email: string;
+  is_active: boolean;
+  is_admin: boolean;
+  client_id?: string;
+  email_verified?: boolean;
+  created_at?: string;
+  updated_at?: string;
 }
-
 
 export interface FileRequest extends Request {
   user?: User;
@@ -64,9 +69,9 @@ export interface QueryParams {
 
 // Definição dos planos para campanhas
 export enum CampaignPlan {
-  STARTER = "starter", // Plano básico para campanhas
-  GROWTH = "growth", // Plano intermediário
-  SCALE = "scale", // Plano avançado
+  STARTER = 'starter', // Plano básico para campanhas
+  GROWTH = 'growth', // Plano intermediário
+  SCALE = 'scale', // Plano avançado
 }
 
 export interface PlanLimits {
