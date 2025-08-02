@@ -134,6 +134,54 @@ router.get("/campaigns/:id/dispatches", (req: Request, res: Response) =>
   controller.getCampaignStats(req as CampaignRequestWithId, res),
 );
 
+// ===== ROTAS PARA ROTAÇÃO DE INSTÂNCIAS =====
+
+// Listar instâncias disponíveis para o usuário
+router.get("/instances/available", (req: Request, res: Response) =>
+  controller.getAvailableInstances(req as RequestWithUser, res),
+);
+
+// Adicionar instâncias a uma campanha
+router.post("/:id/instances", validateCampaignId, (req: Request, res: Response) =>
+  controller.addInstancesToCampaign(req as CampaignRequestWithId & {
+    body: {
+      instanceIds: string[];
+      useRotation: boolean;
+      rotationStrategy: 'RANDOM' | 'SEQUENTIAL' | 'LOAD_BALANCED';
+      maxMessagesPerInstance?: number;
+    };
+  }, res),
+);
+
+// Remover instâncias de uma campanha
+router.delete("/:id/instances", validateCampaignId, (req: Request, res: Response) =>
+  controller.removeInstancesFromCampaign(req as CampaignRequestWithId & {
+    body: {
+      instanceIds: string[];
+    };
+  }, res),
+);
+
+// Obter estatísticas das instâncias de uma campanha
+router.get("/:id/instances/stats", validateCampaignId, (req: Request, res: Response) =>
+  controller.getCampaignInstanceStats(req as CampaignRequestWithId, res),
+);
+
+// Resetar contadores de mensagens das instâncias
+router.post("/:id/instances/reset", validateCampaignId, (req: Request, res: Response) =>
+  controller.resetInstanceCounters(req as CampaignRequestWithId, res),
+);
+
+// Ativar/desativar uma instância específica
+router.patch("/:id/instances/toggle", validateCampaignId, (req: Request, res: Response) =>
+  controller.toggleInstanceStatus(req as CampaignRequestWithId & {
+    body: {
+      instanceId: string;
+      isActive: boolean;
+    };
+  }, res),
+);
+
 // Middlewares de erro
 router.use((err: any, req: Request, res: Response, next: Function) => {
   if (err instanceof multer.MulterError) {

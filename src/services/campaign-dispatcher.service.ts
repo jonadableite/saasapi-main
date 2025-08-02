@@ -1,4 +1,5 @@
 // src/services/campaign-dispatcher.service.ts
+import { instanceRotationService } from '@/services/instance-rotation.service';
 import { metadataCleanerService } from '@/services/metadata-cleaner.service';
 import axios from 'axios';
 import { endOfDay, startOfDay } from 'date-fns';
@@ -28,8 +29,7 @@ const URL_API = 'https://evo.whatlead.com.br';
 const API_KEY = '429683C4C977415CAAFCCE10F7D57E11';
 
 export class MessageDispatcherService
-  implements IMessageDispatcherService
-{
+  implements IMessageDispatcherService {
   private stop: boolean;
   private messageLogService: MessageLogService;
 
@@ -500,14 +500,14 @@ export class MessageDispatcherService
             media:
               campaign.mediaUrl && campaign.mediaType
                 ? {
-                    type: campaign.mediaType as
-                      | 'image'
-                      | 'video'
-                      | 'audio',
-                    media: campaign.mediaUrl,
-                    url: campaign.mediaUrl,
-                    caption: campaign.mediaCaption || undefined,
-                  }
+                  type: campaign.mediaType as
+                    | 'image'
+                    | 'video'
+                    | 'audio',
+                  media: campaign.mediaUrl,
+                  url: campaign.mediaUrl,
+                  caption: campaign.mediaCaption || undefined,
+                }
                 : undefined,
             campaignId: params.campaignId,
             leadId: lead.id,
@@ -658,8 +658,7 @@ export class MessageDispatcherService
       // Limpar metadados antes do envio
       const metadataLogger = logger.setContext('MetadataCleaner');
       metadataLogger.info(
-        `Iniciando limpeza de metadados para ${media.type}: ${
-          media.fileName || 'arquivo'
+        `Iniciando limpeza de metadados para ${media.type}: ${media.fileName || 'arquivo'
         }`,
       );
 

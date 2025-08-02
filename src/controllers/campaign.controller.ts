@@ -14,6 +14,7 @@ import { prisma } from '../lib/prisma';
 import redisClient from '../lib/redis';
 import { messageDispatcherService } from '../services/campaign-dispatcher.service';
 import { CampaignService } from '../services/campaign.service';
+import { instanceRotationService } from '../services/instance-rotation.service';
 import type { CampaignStatus } from '../types/campaign.types';
 import { logger } from '../utils/logger';
 
@@ -137,12 +138,12 @@ export default class CampaignController {
             latestDispatch?.instance?.connectionStatus,
           statistics: campaign.statistics
             ? {
-                totalLeads: campaign.statistics.totalLeads,
-                sentCount: campaign.statistics.sentCount,
-                deliveredCount: campaign.statistics.deliveredCount,
-                readCount: campaign.statistics.readCount,
-                failedCount: campaign.statistics.failedCount,
-              }
+              totalLeads: campaign.statistics.totalLeads,
+              sentCount: campaign.statistics.sentCount,
+              deliveredCount: campaign.statistics.deliveredCount,
+              readCount: campaign.statistics.readCount,
+              failedCount: campaign.statistics.failedCount,
+            }
             : null,
           createdAt: campaign.createdAt,
           updatedAt: campaign.updatedAt,
@@ -959,12 +960,12 @@ export default class CampaignController {
         message: message || '',
         media: media
           ? {
-              type: media.type,
-              media: media.base64,
-              fileName: media.fileName,
-              mimetype: media.mimetype,
-              caption: media.caption,
-            }
+            type: media.type,
+            media: media.base64,
+            fileName: media.fileName,
+            mimetype: media.mimetype,
+            caption: media.caption,
+          }
           : undefined,
         minDelay: Number(minDelay) || 5,
         maxDelay: Number(maxDelay) || 30,
@@ -1216,11 +1217,309 @@ export default class CampaignController {
       res.status(500).json({ error: 'Erro ao finalizar campanha' });
     }
   }
+
+  // ===== MÉTODOS PARA ROTAÇÃO DE INSTÂNCIAS =====
+
+  /**
+   * Adiciona instâncias a uma campanha para rotação
+   */
+  public async addInstancesToCampaign(
+    req: CampaignRequestWithId & {
+      body: {
+        instanceIds: string[];
+        useRotation: boolean;
+        rotationStrategy: 'RANDOM' | 'SEQUENTIAL' | 'LOAD_BALANCED';
+        maxMessagesPerInstance?: number;
+      };
+    },
+    res: Response,
+  ): Promise<void> {
+    try {
+      const { id: campaignId } = req.params;
+      const { instanceIds, useRotation, rotationStrategy, maxMessagesPerInstance } = req.body;
+
+      campaignLogger.info('🔄 Adicionando instâncias para rotação', {
+        campaignId,
+        instanceIds,
+        useRotation,
+        rotationStrategy,
+        maxMessagesPerInstance,
+      });
+
+      await instanceRotationService.addInstancesToCampaign(
+        campaignId,
+        instanceIds,
+        {
+          useRotation,
+          strategy: rotationStrategy,
+          maxMessagesPerInstance,
+        },
+      );
+
+      campaignLogger.success('✅ Instâncias adicionadas com sucesso', {
+        campaignId,
+        instanceCount: instanceIds.length,
+      });
+
+      res.json({
+        success: true,
+        message: `${instanceIds.length} instância(s) adicionada(s) com sucesso`,
+      });
+    } catch (error) {
+      campaignLogger.error('❌ Erro ao adicionar instâncias', {
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        campaignId: req.params.id,
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Erro ao adicionar instâncias',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+      });
+    }
+  }
+
+  /**
+   * Remove instâncias de uma campanha
+   */
+  public async removeInstancesFromCampaign(
+    req: CampaignRequestWithId & {
+      body: {
+        instanceIds: string[];
+      };
+    },
+    res: Response,
+  ): Promise<void> {
+    try {
+      const { id: campaignId } = req.params;
+      const { instanceIds } = req.body;
+
+      campaignLogger.info('🗑️ Removendo instâncias da campanha', {
+        campaignId,
+        instanceIds,
+      });
+
+      await instanceRotationService.removeInstancesFromCampaign(
+        campaignId,
+        instanceIds,
+      );
+
+      campaignLogger.success('✅ Instâncias removidas com sucesso', {
+        campaignId,
+        instanceCount: instanceIds.length,
+      });
+
+      res.json({
+        success: true,
+        message: `${instanceIds.length} instância(s) removida(s) com sucesso`,
+      });
+    } catch (error) {
+      campaignLogger.error('❌ Erro ao remover instâncias', {
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        campaignId: req.params.id,
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Erro ao remover instâncias',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+      });
+    }
+  }
+
+  /**
+   * Obtém estatísticas das instâncias de uma campanha
+   */
+  public async getCampaignInstanceStats(
+    req: CampaignRequestWithId,
+    res: Response,
+  ): Promise<void> {
+    try {
+      const { id: campaignId } = req.params;
+
+      campaignLogger.info('📊 Obtendo estatísticas das instâncias', {
+        campaignId,
+      });
+
+      const stats = await instanceRotationService.getCampaignInstanceStats(campaignId);
+
+      campaignLogger.success('✅ Estatísticas obtidas com sucesso', {
+        campaignId,
+        instanceCount: stats.instances.length,
+      });
+
+      res.json({
+        success: true,
+        data: stats,
+      });
+    } catch (error) {
+      campaignLogger.error('❌ Erro ao obter estatísticas', {
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        campaignId: req.params.id,
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Erro ao obter estatísticas',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+      });
+    }
+  }
+
+  /**
+   * Reseta os contadores de mensagens das instâncias
+   */
+  public async resetInstanceCounters(
+    req: CampaignRequestWithId,
+    res: Response,
+  ): Promise<void> {
+    try {
+      const { id: campaignId } = req.params;
+
+      campaignLogger.info('🔄 Resetando contadores de instâncias', {
+        campaignId,
+      });
+
+      await instanceRotationService.resetCampaignInstanceCounters(campaignId);
+
+      campaignLogger.success('✅ Contadores resetados com sucesso', {
+        campaignId,
+      });
+
+      res.json({
+        success: true,
+        message: 'Contadores de mensagens resetados com sucesso',
+      });
+    } catch (error) {
+      campaignLogger.error('❌ Erro ao resetar contadores', {
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        campaignId: req.params.id,
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Erro ao resetar contadores',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+      });
+    }
+  }
+
+  /**
+   * Ativa/desativa uma instância específica
+   */
+  public async toggleInstanceStatus(
+    req: CampaignRequestWithId & {
+      body: {
+        instanceId: string;
+        isActive: boolean;
+      };
+    },
+    res: Response,
+  ): Promise<void> {
+    try {
+      const { id: campaignId } = req.params;
+      const { instanceId, isActive } = req.body;
+
+      campaignLogger.info('🔄 Alterando status da instância', {
+        campaignId,
+        instanceId,
+        isActive,
+      });
+
+      await instanceRotationService.toggleInstanceStatus(
+        campaignId,
+        instanceId,
+        isActive,
+      );
+
+      campaignLogger.success('✅ Status da instância alterado com sucesso', {
+        campaignId,
+        instanceId,
+        isActive,
+      });
+
+      res.json({
+        success: true,
+        message: `Instância ${isActive ? 'ativada' : 'desativada'} com sucesso`,
+      });
+    } catch (error) {
+      campaignLogger.error('❌ Erro ao alterar status da instância', {
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        campaignId: req.params.id,
+        instanceId: req.body.instanceId,
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Erro ao alterar status da instância',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+      });
+    }
+  }
+
+  /**
+   * Lista instâncias disponíveis para o usuário
+   */
+  public async getAvailableInstances(
+    req: RequestWithUser,
+    res: Response,
+  ): Promise<void> {
+    try {
+      const userId = req.user?.id;
+
+      if (!userId) {
+        throw new BadRequestError('Usuário não autenticado');
+      }
+
+      campaignLogger.info('📋 Listando instâncias disponíveis', {
+        userId,
+      });
+
+      const instances = await prisma.instance.findMany({
+        where: {
+          userId,
+          connectionStatus: 'CONNECTED',
+        },
+        select: {
+          id: true,
+          instanceName: true,
+          connectionStatus: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+        orderBy: {
+          createdAt: 'desc',
+        },
+      });
+
+      campaignLogger.success('✅ Instâncias listadas com sucesso', {
+        userId,
+        instanceCount: instances.length,
+      });
+
+      res.json({
+        success: true,
+        data: instances,
+      });
+    } catch (error) {
+      campaignLogger.error('❌ Erro ao listar instâncias', {
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+        userId: req.user?.id,
+      });
+
+      res.status(500).json({
+        success: false,
+        message: 'Erro ao listar instâncias',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
+      });
+    }
+  }
 }
 
 export type {
   BaseCampaignRequest,
   CampaignRequestWithId,
   CreateCampaignRequest,
-  StartCampaignRequest,
+  StartCampaignRequest
 };
+
