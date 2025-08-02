@@ -1,12 +1,13 @@
 // src/controllers/grupo.controller.ts
 import { Request, Response } from 'express';
 import { z } from 'zod';
+import { EvolutionApiService } from '../services/evolution-api.service';
 import { grupoService } from '../services/grupo.service';
 import { logger } from '../utils/logger';
 
 const controllerLogger = logger.setContext('GroupController');
 
-// Schemas de validação
+// Schemas de validação (mantidos inalterados)
 const createGroupSchema = z.object({
   instanceName: z.string().min(1, 'Nome da instância é obrigatório'),
   subject: z
@@ -78,6 +79,12 @@ const sendInviteSchema = z.object({
 });
 
 export class GrupoController {
+  private evolutionService: EvolutionApiService; // Declaração da propriedade
+
+  constructor() {
+    this.evolutionService = new EvolutionApiService(); // Inicialização da propriedade
+  }
+
   // Criar grupo
   async createGroup(req: Request, res: Response) {
     try {
@@ -165,13 +172,13 @@ export class GrupoController {
         });
       }
 
-      res.json({
+      res.status(200).json({
         success: true,
-        message: 'Grupos encontrados',
+        message: 'Grupos buscados com sucesso',
         data: result.data,
       });
     } catch (error: any) {
-      controllerLogger.error('Error fetching groups', error);
+      controllerLogger.error('Error fetching all groups', error);
       res.status(500).json({
         success: false,
         message: 'Erro interno do servidor',
@@ -860,6 +867,184 @@ export class GrupoController {
       res.status(500).json({
         success: false,
         message: 'Erro interno do servidor',
+      });
+    }
+  }
+
+  async sendTextToGroup(req: Request, res: Response) {
+    const { instanceName } = req.params;
+    const {
+      groupJid,
+      text,
+      delay,
+      quoted,
+      linkPreview,
+      mentionsEveryOne,
+      mentioned,
+    } = req.body;
+
+    if (!groupJid || !text) {
+      return res.status(400).json({
+        success: false,
+        error: 'groupJid e text são obrigatórios.',
+      });
+    }
+
+    try {
+      const result = await this.evolutionService.sendTextToGroup({
+        instanceName,
+        groupJid,
+        text,
+        delay,
+        quoted,
+        linkPreview,
+        mentionsEveryOne,
+        mentioned,
+      });
+      if (result.success) {
+        return res.status(200).json(result);
+      }
+      return res.status(500).json(result);
+    } catch (error: any) {
+      console.error('Erro no controlador sendTextToGroup:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Falha ao enviar texto para o grupo.',
+      });
+    }
+  }
+
+  async sendMediaToGroup(req: Request, res: Response) {
+    const { instanceName } = req.params;
+    const {
+      groupJid,
+      mediatype,
+      mimetype,
+      media,
+      caption,
+      fileName,
+      delay,
+      quoted,
+      mentionsEveryOne,
+      mentioned,
+    } = req.body;
+
+    if (!groupJid || !mediatype || !mimetype || !media) {
+      return res.status(400).json({
+        success: false,
+        error:
+          'groupJid, mediatype, mimetype e media são obrigatórios.',
+      });
+    }
+
+    try {
+      const result = await this.evolutionService.sendMediaToGroup({
+        instanceName,
+        groupJid,
+        mediatype,
+        mimetype,
+        media,
+        caption,
+        fileName,
+        delay,
+        quoted,
+        mentionsEveryOne,
+        mentioned,
+      });
+      if (result.success) {
+        return res.status(200).json(result);
+      }
+      return res.status(500).json(result);
+    } catch (error: any) {
+      console.error('Erro no controlador sendMediaToGroup:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Falha ao enviar mídia para o grupo.',
+      });
+    }
+  }
+
+  async sendStickerToGroup(req: Request, res: Response) {
+    const { instanceName } = req.params;
+    const {
+      groupJid,
+      sticker,
+      delay,
+      quoted,
+      mentionsEveryOne,
+      mentioned,
+    } = req.body;
+
+    if (!groupJid || !sticker) {
+      return res.status(400).json({
+        success: false,
+        error: 'groupJid e sticker são obrigatórios.',
+      });
+    }
+
+    try {
+      const result = await this.evolutionService.sendStickerToGroup({
+        instanceName,
+        groupJid,
+        sticker,
+        delay,
+        quoted,
+        mentionsEveryOne,
+        mentioned,
+      });
+      if (result.success) {
+        return res.status(200).json(result);
+      }
+      return res.status(500).json(result);
+    } catch (error: any) {
+      console.error('Erro no controlador sendStickerToGroup:', error);
+      return res.status(500).json({
+        success: false,
+        error:
+          error.message || 'Falha ao enviar figurinha para o grupo.',
+      });
+    }
+  }
+
+  async sendAudioToGroup(req: Request, res: Response) {
+    const { instanceName } = req.params;
+    const {
+      groupJid,
+      audio,
+      delay,
+      quoted,
+      mentionsEveryOne,
+      mentioned,
+      encoding,
+    } = req.body;
+
+    if (!groupJid || !audio) {
+      return res.status(400).json({
+        success: false,
+        error: 'groupJid e audio são obrigatórios.',
+      });
+    }
+
+    try {
+      const result = await this.evolutionService.sendAudioToGroup({
+        instanceName,
+        groupJid,
+        audio,
+        delay,
+        quoted,
+        mentionsEveryOne,
+        mentioned,
+        encoding,
+      });
+      if (result.success) {
+        return res.status(200).json(result);
+      }
+      return res.status(500).json(result);
+    } catch (error: any) {
+      console.error('Erro no controlador sendAudioToGroup:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Falha ao enviar áudio para o grupo.',
       });
     }
   }

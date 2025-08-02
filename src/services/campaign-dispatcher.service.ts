@@ -1,4 +1,5 @@
 // src/services/campaign-dispatcher.service.ts
+import { metadataCleanerService } from '@/services/metadata-cleaner.service';
 import axios from 'axios';
 import { endOfDay, startOfDay } from 'date-fns';
 import type {
@@ -39,7 +40,7 @@ export class MessageDispatcherService
 
   public async startDispatch(params: {
     campaignId: string;
-    instanceName: string;
+    instanceName?: string; // Opcional agora, pois pode usar rotação
     message: string;
     media?: MediaContent;
     minDelay: number;
@@ -135,6 +136,26 @@ export class MessageDispatcherService
             `Processando lead ${lead.id} (${lead.phone})`,
           );
 
+          // Obter próxima instância disponível (com rotação se habilitada)
+          let currentInstanceName = params.instanceName;
+          if (!currentInstanceName) {
+            const nextInstance =
+              await instanceRotationService.getNextAvailableInstance(
+                params.campaignId,
+              );
+
+            if (!nextInstance) {
+              throw new Error(
+                'Nenhuma instância disponível para envio',
+              );
+            }
+
+            currentInstanceName = nextInstance.instanceName;
+            leadLogger.info(
+              `Usando instância rotativa: ${currentInstanceName}`,
+            );
+          }
+
           // Atualizar status para processando
           await prisma.campaignLead.update({
             where: { id: lead.id },
@@ -151,7 +172,7 @@ export class MessageDispatcherService
             const mediaLogger = logger.setContext('Mídia');
             mediaLogger.info('Enviando mídia...');
             response = await this.sendMedia(
-              params.instanceName,
+              currentInstanceName,
               lead.phone,
               {
                 type: params.media.type as
@@ -171,7 +192,7 @@ export class MessageDispatcherService
             const textLogger = logger.setContext('Texto');
             textLogger.info('Enviando mensagem de texto...');
             response = await this.sendText(
-              params.instanceName,
+              currentInstanceName,
               lead.phone,
               params.message,
             );
@@ -634,6 +655,37 @@ export class MessageDispatcherService
       : `55${phone}`;
 
     try {
+      // Limpar metadados antes do envio
+      const metadataLogger = logger.setContext('MetadataCleaner');
+      metadataLogger.info(
+        `Iniciando limpeza de metadados para ${media.type}: ${
+          media.fileName || 'arquivo'
+        }`,
+      );
+
+      const cleanResult =
+        await metadataCleanerService.cleanMediaMetadata(
+          media.media,
+          media.fileName || `media.${media.type}`,
+          media.mimetype || this.getDefaultMimeType(media.type),
+        );
+
+      if (!cleanResult.success) {
+        throw new Error(
+          `Falha ao limpar metadados: ${cleanResult.error}`,
+        );
+      }
+
+      metadataLogger.info(
+        `Metadados removidos com sucesso: ${cleanResult.cleanedMedia?.fileName}`,
+        {
+          originalSize: cleanResult.originalSize,
+          cleanedSize: cleanResult.cleanedSize,
+          reduction:
+            cleanResult.originalSize - cleanResult.cleanedSize,
+        },
+      );
+
       let endpoint = '';
       let payload: any = {
         number: formattedNumber,
@@ -646,10 +698,10 @@ export class MessageDispatcherService
           payload = {
             ...payload,
             mediatype: 'image',
-            media: media.media, // ✅ Correção: use media.media em vez de media.base64
+            media: cleanResult.cleanedMedia!.data, // Usar mídia limpa
             caption: media.caption,
-            fileName: media.fileName || 'image.jpg',
-            mimetype: media.mimetype || 'image/jpeg',
+            fileName: cleanResult.cleanedMedia!.fileName,
+            mimetype: cleanResult.cleanedMedia!.mimetype,
           };
           break;
 
@@ -658,10 +710,10 @@ export class MessageDispatcherService
           payload = {
             ...payload,
             mediatype: 'video',
-            media: media.media, // ✅ Correção: use media.media em vez de media.base64
+            media: cleanResult.cleanedMedia!.data, // Usar mídia limpa
             caption: media.caption,
-            fileName: media.fileName || 'video.mp4',
-            mimetype: media.mimetype || 'video/mp4',
+            fileName: cleanResult.cleanedMedia!.fileName,
+            mimetype: cleanResult.cleanedMedia!.mimetype,
           };
           break;
 
@@ -669,7 +721,7 @@ export class MessageDispatcherService
           endpoint = `/message/sendWhatsAppAudio/${instanceName}`;
           payload = {
             ...payload,
-            audio: media.media, // ✅ Correção: use media.media em vez de media.base64
+            audio: cleanResult.cleanedMedia!.data, // Usar mídia limpa
             encoding: true,
           };
           break;
@@ -794,6 +846,24 @@ export class MessageDispatcherService
     return new Promise((resolve) =>
       setTimeout(resolve, delayTime * 1000),
     );
+  }
+
+  /**
+   * Retorna o MIME type padrão baseado no tipo de mídia
+   */
+  private getDefaultMimeType(
+    type: 'image' | 'video' | 'audio',
+  ): string {
+    switch (type) {
+      case 'image':
+        return 'image/jpeg';
+      case 'video':
+        return 'video/mp4';
+      case 'audio':
+        return 'audio/mpeg';
+      default:
+        return 'application/octet-stream';
+    }
   }
 
   private async updateCampaignStats(

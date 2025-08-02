@@ -198,6 +198,7 @@ model Instance {
   campaignDispatches CampaignDispatch[]
   warmupStats        WarmupStats[]
   mediaStats         MediaStats[]
+  campaignInstances  CampaignInstance[]
 
   @@index([userId])
   @@index([instanceName])
@@ -256,45 +257,76 @@ model WarmupStats {
 }
 
 model Campaign {
-  id              String    @id @default(uuid())
-  name            String
-  description     String?
-  status          String    @default("draft")
-  type            String
-  message         String?
-  mediaUrl        String?
-  mediaType       String?
-  mediaCaption    String?
-  scheduledDate   DateTime?
-  scheduledStatus String?   @default("pending")
-  startedAt       DateTime?
-  completedAt     DateTime?
-  pausedAt        DateTime?
-  progress        Int       @default(0)
-  minDelay        Int       @default(5)
-  maxDelay        Int       @default(30)
-  userId          String
-  instanceId      String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-  isAiResponder   Json?
+  id                     String    @id @default(uuid())
+  name                   String
+  description            String?
+  status                 String    @default("draft")
+  type                   String
+  message                String?
+  mediaUrl               String?
+  mediaType              String?
+  mediaCaption           String?
+  scheduledDate          DateTime?
+  scheduledStatus        String?   @default("pending")
+  startedAt              DateTime?
+  completedAt            DateTime?
+  pausedAt               DateTime?
+  progress               Int       @default(0)
+  minDelay               Int       @default(5)
+  maxDelay               Int       @default(30)
+  userId                 String
+  instanceId             String?
+  // Novos campos para rotatividade
+  useInstanceRotation    Boolean   @default(false)
+  rotationStrategy       String    @default("RANDOM") // RANDOM, SEQUENTIAL, LOAD_BALANCED
+  maxMessagesPerInstance Int? // Limite de mensagens por instância antes de alternar
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+  isAiResponder          Json?
 
-  MessageLog       MessageLog[]
-  leads            CampaignLead[]
-  messages         CampaignMessage[]
-  statistics       CampaignStatistics?
-  dispatches       CampaignDispatch[]
-  user             User                @relation(fields: [userId], references: [id])
-  instance         Instance?           @relation(fields: [instanceId], references: [id])
-  CampaignErrorLog CampaignErrorLog[]
-  CampaignSchedule CampaignSchedule[]
-  MessageAnalytics MessageAnalytics[]
-  contacts         Contact[]           @relation("ContactCampaigns")
+  MessageLog        MessageLog[]
+  leads             CampaignLead[]
+  messages          CampaignMessage[]
+  statistics        CampaignStatistics?
+  dispatches        CampaignDispatch[]
+  user              User                @relation(fields: [userId], references: [id])
+  instance          Instance?           @relation(fields: [instanceId], references: [id])
+  CampaignErrorLog  CampaignErrorLog[]
+  CampaignSchedule  CampaignSchedule[]
+  MessageAnalytics  MessageAnalytics[]
+  contacts          Contact[]           @relation("ContactCampaigns")
+  // Nova relação para múltiplas instâncias
+  campaignInstances CampaignInstance[]
 
   @@index([userId])
   @@index([instanceId])
   @@index([status])
   @@map("whatlead_campaigns")
+}
+
+// Nova tabela para armazenar múltiplas instâncias por campanha
+model CampaignInstance {
+  id           String    @id @default(uuid())
+  campaignId   String
+  instanceId   String
+  instanceName String
+  priority     Int       @default(0) // Prioridade da instância (0 = mais alta)
+  isActive     Boolean   @default(true)
+  maxMessages  Int? // Limite de mensagens para esta instância
+  messagesSent Int       @default(0) // Contador de mensagens enviadas
+  lastUsedAt   DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  campaign Campaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  instance Instance @relation(fields: [instanceId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, instanceId])
+  @@index([campaignId])
+  @@index([instanceId])
+  @@index([isActive])
+  @@index([priority])
+  @@map("whatlead_campaign_instances")
 }
 
 model CampaignDispatch {

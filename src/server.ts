@@ -25,9 +25,11 @@ import { campaignRoutes } from './routes/campaign.routes';
 import { companyRoutes } from './routes/company.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import dashboardsRoutes from './routes/dashboards.routes';
+import grupoRoutes from './routes/grupo.routes';
 import instanceRoutes from './routes/instance.routes';
 import leadRoutes from './routes/lead.routes';
 import messageLogRoutes from './routes/message-log.routes';
+import metadataCleanerRoutes from './routes/metadata-cleaner.routes';
 import passwordRoutes from './routes/password.routes';
 import paymentRoutes from './routes/payment.routes';
 import reportsRoutes from './routes/reports.routes';
@@ -40,8 +42,6 @@ import { webhookRoutes } from './routes/webhook.routes';
 import { campaignService } from './services/campaign.service';
 import socketService from './services/socket.service';
 import { logger } from './utils/logger';
-// Importa as novas rotas de grupo
-import grupoRoutes from './routes/grupo.routes'; // Adicionado
 
 // Configurar logger para este contexto
 const serverLogger = logger.setContext('ServerInitialization');
@@ -125,6 +125,7 @@ const protectedRoutes = [
   { path: '/api/dashboards', route: dashboardsRoutes },
   { path: '/api/message-logs', route: messageLogRoutes },
   { path: '/api/groups', route: grupoRoutes },
+  { path: '/api/metadata-cleaner', route: metadataCleanerRoutes },
 ];
 
 protectedRoutes.forEach(({ path, route }) => {

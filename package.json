@@ -15,7 +15,8 @@
     "prisma:studio": "npx prisma studio",
     "prisma:migrate": "npx prisma migrate dev",
     "lint": "biome check --apply-unsafe src",
-    "lint:check": "biome check src"
+    "lint:check": "biome check src",
+    "test:metadata": "node test-metadata-cleaner.js"
   },
   "keywords": [],
   "author": {
@@ -29,7 +30,9 @@
     "@nestjs/common": "^11.0.20",
     "@prisma/client": "^6.6.0",
     "@types/ioredis": "^4.28.10",
+    "@types/jimp": "^0.2.1",
     "@types/multer": "^1.4.12",
+    "@types/sharp": "^0.31.1",
     "@types/uuid": "^10.0.0",
     "@types/validator": "^13.15.0",
     "axios": "^1.7.9",
@@ -43,7 +46,9 @@
     "express": "^4.21.2",
     "express-rate-limit": "^7.5.1",
     "fastify": "^5.2.0",
+    "ffmpeg-static": "^5.2.0",
     "ioredis": "^5.4.2",
+    "jimp": "^1.6.0",
     "jsonwebtoken": "^9.0.2",
     "minio": "^8.0.3",
     "module-alias": "^2.2.3",
@@ -52,6 +57,7 @@
     "node-schedule": "^2.1.1",
     "nodemailer": "^6.9.16",
     "redis": "^4.7.0",
+    "sharp": "^0.34.3",
     "socket.io": "^4.8.1",
     "stripe": "^17.5.0",
     "swagger-jsdoc": "^6.2.5",
