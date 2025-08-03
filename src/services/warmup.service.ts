@@ -31,6 +31,13 @@ interface MediaStats {
   audio: number;
   sticker: number;
   reaction: number;
+  document: number;
+  location: number;
+  contact: number;
+  poll: number;
+  status: number;
+  profile: number;
+  group_action: number;
   totalDaily: number;
   totalAllTime: number;
   totalSent: number;
@@ -49,6 +56,12 @@ interface WarmupStats {
   userId: string;
   mediaStatsId: string;
   mediaReceivedId: string;
+  // Novos campos para estatísticas avançadas
+  engagementScore?: number;
+  responseRate?: number;
+  averageResponseTime?: number;
+  conversationDepth?: number;
+  groupParticipation?: number;
 }
 
 interface MediaPayload {
@@ -66,6 +79,23 @@ interface MediaPayload {
   options?: {
     delay: number;
     linkPreview: boolean;
+  };
+  // Novos campos para tipos avançados
+  document?: string;
+  location?: {
+    latitude: number;
+    longitude: number;
+    name: string;
+    address: string;
+  };
+  contact?: {
+    name: string;
+    number: string;
+    email?: string;
+  };
+  poll?: {
+    question: string;
+    options: string[];
   };
 }
 
@@ -100,6 +130,10 @@ interface ApiResponse {
     stickerMessage?: any;
     reactionMessage?: any;
     messageContextInfo?: any;
+    documentMessage?: any;
+    locationMessage?: any;
+    contactMessage?: any;
+    pollMessage?: any;
   };
   contextInfo?: any;
   messageType: string;
@@ -108,16 +142,239 @@ interface ApiResponse {
   source: string;
 }
 
+// Novas interfaces para funcionalidades avançadas
+interface HumanBehaviorSimulator {
+  simulateTyping(instanceId: string, target: string): Promise<void>;
+  simulateOnlineStatus(
+    instanceId: string,
+    status: 'online' | 'offline',
+  ): Promise<void>;
+  simulateReadReceipt(
+    instanceId: string,
+    messageId: string,
+  ): Promise<void>;
+  simulateResponseDelay(
+    messageLength: number,
+    urgency: 'low' | 'medium' | 'high',
+  ): Promise<void>;
+}
+
+interface TimeBasedScheduler {
+  isActiveTime(): boolean;
+  isWeekend(): boolean;
+  getOptimalDelay(): number;
+  shouldSendMessage(): boolean;
+}
+
+interface EngagementOptimizer {
+  calculateEngagementScore(instanceId: string): Promise<number>;
+  optimizeMessageTiming(instanceId: string): Promise<number>;
+  suggestResponseStrategy(
+    conversationHistory: any[],
+  ): Promise<string>;
+  trackConversationDepth(
+    instanceId: string,
+    messageCount: number,
+  ): void;
+}
+
 export class WarmupService {
   private activeInstances: Map<string, NodeJS.Timeout>;
   private stop: boolean;
   private eventEmitter: EventEmitter;
+  private humanBehaviorSimulator: HumanBehaviorSimulator;
+  private timeBasedScheduler: TimeBasedScheduler;
+  private engagementOptimizer: EngagementOptimizer;
+  private conversationHistory: Map<string, any[]>;
+  private engagementScores: Map<string, number>;
 
   constructor() {
     this.activeInstances = new Map();
     this.stop = false;
     this.eventEmitter = new EventEmitter();
     this.eventEmitter.setMaxListeners(20);
+    this.conversationHistory = new Map();
+    this.engagementScores = new Map();
+
+    // Inicializar simuladores
+    this.humanBehaviorSimulator = this.createHumanBehaviorSimulator();
+    this.timeBasedScheduler = this.createTimeBasedScheduler();
+    this.engagementOptimizer = this.createEngagementOptimizer();
+  }
+
+  private createHumanBehaviorSimulator(): HumanBehaviorSimulator {
+    return {
+      async simulateTyping(
+        instanceId: string,
+        target: string,
+      ): Promise<void> {
+        const typingDuration =
+          Math.floor(Math.random() * 3000) + 1000;
+        console.log(
+          `Simulando digitação para ${target} por ${typingDuration}ms`,
+        );
+        await new Promise((resolve) =>
+          setTimeout(resolve, typingDuration),
+        );
+      },
+
+      async simulateOnlineStatus(
+        instanceId: string,
+        status: 'online' | 'offline',
+      ): Promise<void> {
+        try {
+          // Simular status online/offline usando um endpoint que existe
+          await axios.post(
+            `${URL_API}/instance/connectionState/${instanceId}`,
+            {
+              state: status,
+            },
+            {
+              headers: {
+                'Content-Type': 'application/json',
+                apikey: API_KEY,
+              },
+            },
+          );
+          console.log(`Status ${status} simulado para ${instanceId}`);
+        } catch (error) {
+          // Se o endpoint não existir, apenas logar e continuar
+          console.log(
+            `Status ${status} simulado para ${instanceId} (simulado)`,
+          );
+        }
+      },
+
+      async simulateReadReceipt(
+        instanceId: string,
+        messageId: string,
+      ): Promise<void> {
+        try {
+          await axios.post(
+            `${URL_API}/message/markAsRead/${instanceId}`,
+            {
+              messageId: messageId,
+            },
+            {
+              headers: {
+                'Content-Type': 'application/json',
+                apikey: API_KEY,
+              },
+            },
+          );
+          console.log(
+            `Read receipt simulado para mensagem ${messageId}`,
+          );
+        } catch (error) {
+          console.error('Erro ao simular read receipt:', error);
+        }
+      },
+
+      async simulateResponseDelay(
+        messageLength: number,
+        urgency: 'low' | 'medium' | 'high',
+      ): Promise<void> {
+        const baseDelay = messageLength * 50; // 50ms por caractere
+        const urgencyMultiplier = {
+          low: 2,
+          medium: 1,
+          high: 0.5,
+        };
+        const finalDelay = baseDelay * urgencyMultiplier[urgency];
+        await new Promise((resolve) =>
+          setTimeout(resolve, finalDelay),
+        );
+      },
+    };
+  }
+
+  private createTimeBasedScheduler(): TimeBasedScheduler {
+    return {
+      isActiveTime(): boolean {
+        // Removido bloqueio de horário - sempre considera horário ativo
+        return true;
+      },
+
+      isWeekend(): boolean {
+        const now = new Date();
+        const day = now.getDay();
+        return day === 0 || day === 6; // Domingo = 0, Sábado = 6
+      },
+
+      getOptimalDelay(): number {
+        // Delay consistente independente do horário
+        return 5000; // 5 segundos de delay padrão
+      },
+
+      shouldSendMessage(): boolean {
+        // Removido bloqueio de horário - sempre permite envio de mensagens
+        return true;
+      },
+    };
+  }
+
+  private createEngagementOptimizer(): EngagementOptimizer {
+    return {
+      async calculateEngagementScore(
+        instanceId: string,
+      ): Promise<number> {
+        const stats = await prisma.warmupStats.findUnique({
+          where: { instanceName: instanceId },
+          include: { mediaStats: true },
+        });
+
+        if (!stats || !stats.mediaStats) return 0;
+
+        const totalMessages =
+          stats.mediaStats.totalSent + stats.mediaStats.totalReceived;
+        const responseRate =
+          stats.mediaStats.totalReceived / Math.max(totalMessages, 1);
+        const activityLevel = stats.warmupTime || 0;
+
+        return Math.min(100, responseRate * 50 + activityLevel * 0.1);
+      },
+
+      async optimizeMessageTiming(
+        instanceId: string,
+      ): Promise<number> {
+        const engagementScore = await this.calculateEngagementScore(
+          instanceId,
+        );
+
+        // Timing baseado no score de engajamento
+        if (engagementScore > 80) return 2000; // Alto engajamento = resposta rápida
+        if (engagementScore > 50) return 5000; // Médio engajamento = resposta normal
+        return 10000; // Baixo engajamento = resposta lenta
+      },
+
+      async suggestResponseStrategy(
+        conversationHistory: any[],
+      ): Promise<string> {
+        const recentMessages = conversationHistory.slice(-5);
+        const hasQuestions = recentMessages.some((msg) =>
+          msg.text?.includes('?'),
+        );
+        const hasEmojis = recentMessages.some((msg) =>
+          /\p{Emoji}/u.test(msg.text || ''),
+        );
+
+        if (hasQuestions) return 'question_response';
+        if (hasEmojis) return 'emoji_response';
+        return 'normal_response';
+      },
+
+      trackConversationDepth(
+        instanceId: string,
+        messageCount: number,
+      ): void {
+        const currentDepth =
+          this.conversationHistory.get(instanceId)?.length || 0;
+        this.conversationHistory.set(instanceId, [
+          ...(this.conversationHistory.get(instanceId) || []),
+          { timestamp: new Date(), count: messageCount },
+        ]);
+      },
+    };
   }
 
   async startWarmup(config: WarmupConfig): Promise<void> {
@@ -707,6 +964,13 @@ export class WarmupService {
     // Registrar o listener
     this.eventEmitter.on('message', messageListener);
 
+    // Lista de números externos para conversar
+    const externalNumbers = this.getExternalNumbersList();
+
+    // ID do grupo para conversas em grupo
+    const groupId =
+      config.config.groupId || '120363419940617369@g.us';
+
     while (!this.stop) {
       try {
         // Verificar limite diário antes de iniciar novo ciclo
@@ -733,12 +997,77 @@ export class WarmupService {
           break;
         }
 
-        for (const toInstance of config.phoneInstances) {
-          if (
-            this.stop ||
-            instance.instanceId === toInstance.instanceId
-          )
-            continue;
+        // Removida verificação de horário - sempre permite envio de mensagens
+
+        // Calcular score de engajamento
+        const engagementScore =
+          await this.engagementOptimizer.calculateEngagementScore(
+            instance.instanceId,
+          );
+        console.log(
+          `Score de engajamento: ${engagementScore.toFixed(1)}`,
+        );
+
+        // Otimizar timing baseado no engajamento
+        const optimalDelay =
+          await this.engagementOptimizer.optimizeMessageTiming(
+            instance.instanceId,
+          );
+        console.log(`Timing otimizado: ${optimalDelay}ms`);
+
+        // Simular status online se configurado
+        if (config.config.onlineStatusSimulation) {
+          await this.humanBehaviorSimulator.simulateOnlineStatus(
+            instance.instanceId,
+            'online',
+          );
+        }
+
+        // Decidir se vai enviar para grupo ou privado
+        const isGroupMessage =
+          Math.random() < (config.config.groupChance || 0.3);
+
+        // Decidir se vai usar números externos ou instâncias
+        const useExternalNumbers =
+          Math.random() <
+          (config.config.externalNumbersChance || 0.4);
+
+        let targetNumbers: string[] = [];
+
+        if (isGroupMessage) {
+          // Para grupos, sempre usar o grupo configurado
+          targetNumbers = [groupId];
+          console.log('Decidido enviar mensagem para grupo');
+        } else {
+          // Para privado, escolher entre números externos ou instâncias
+          if (useExternalNumbers) {
+            // Selecionar alguns números externos aleatoriamente
+            const shuffledExternal = [...externalNumbers].sort(
+              () => Math.random() - 0.5,
+            );
+            targetNumbers = shuffledExternal.slice(
+              0,
+              Math.min(3, shuffledExternal.length),
+            );
+            console.log(
+              `Decidido usar ${targetNumbers.length} números externos`,
+            );
+          } else {
+            // Usar instâncias do config
+            targetNumbers = config.phoneInstances
+              .filter(
+                (toInstance) =>
+                  instance.instanceId !== toInstance.instanceId,
+              )
+              .map((toInstance) => toInstance.phoneNumber);
+            console.log(
+              `Decidido usar ${targetNumbers.length} instâncias`,
+            );
+          }
+        }
+
+        for (const targetNumber of targetNumbers) {
+          if (this.stop) continue;
 
           try {
             const messageTypes = [
@@ -777,33 +1106,69 @@ export class WarmupService {
               }
             }
 
-            // Simular comportamento humano
-            switch (selectedType) {
-              case 'text':
-                console.log(
-                  `Simulando digitação para ${toInstance.phoneNumber}...`,
-                );
-                await this.delay(2000, 5000);
-                break;
-              case 'audio':
-                console.log(
-                  `Simulando gravação de áudio para ${toInstance.phoneNumber}...`,
-                );
-                await this.delay(5000, 15000);
-                break;
-              case 'image':
-              case 'video':
-                console.log(
-                  `Simulando seleção de mídia para ${toInstance.phoneNumber}...`,
-                );
-                await this.delay(3000, 8000);
-                break;
-              case 'sticker':
-                console.log(
-                  `Simulando seleção de sticker para ${toInstance.phoneNumber}...`,
-                );
-                await this.delay(2000, 6000);
-                break;
+            // Simular comportamento humano com otimizações
+            if (config.config.typingSimulation) {
+              switch (selectedType) {
+                case 'text':
+                  console.log(
+                    `Simulando digitação para ${
+                      isGroupMessage ? 'grupo' : targetNumber
+                    }...`,
+                  );
+                  await this.humanBehaviorSimulator.simulateTyping(
+                    instance.instanceId,
+                    isGroupMessage ? 'grupo' : targetNumber,
+                  );
+                  break;
+                case 'audio':
+                  console.log(
+                    `Simulando gravação de áudio para ${
+                      isGroupMessage ? 'grupo' : targetNumber
+                    }...`,
+                  );
+                  await new Promise((resolve) =>
+                    setTimeout(
+                      resolve,
+                      Math.floor(Math.random() * 10000) + 5000,
+                    ),
+                  );
+                  break;
+                case 'image':
+                case 'video':
+                  console.log(
+                    `Simulando seleção de mídia para ${
+                      isGroupMessage ? 'grupo' : targetNumber
+                    }...`,
+                  );
+                  await new Promise((resolve) =>
+                    setTimeout(
+                      resolve,
+                      Math.floor(Math.random() * 5000) + 3000,
+                    ),
+                  );
+                  break;
+                case 'sticker':
+                  console.log(
+                    `Simulando seleção de sticker para ${
+                      isGroupMessage ? 'grupo' : targetNumber
+                    }...`,
+                  );
+                  await new Promise((resolve) =>
+                    setTimeout(
+                      resolve,
+                      Math.floor(Math.random() * 4000) + 2000,
+                    ),
+                  );
+                  break;
+              }
+            } else {
+              // Delay básico se simulação desabilitada
+              await new Promise((resolve) =>
+                setTimeout(
+                  resolve,
+                  Math.floor(Math.random() * 2000) + 1000,
+                ),
+              );
             }
 
             const content = this.getContentForType(
@@ -813,12 +1178,14 @@ export class WarmupService {
 
             if (content) {
               console.log(
-                `Enviando ${selectedType} para ${toInstance.phoneNumber}`,
+                `Enviando ${selectedType} para ${
+                  isGroupMessage ? 'grupo' : targetNumber
+                }`,
               );
 
               const messageId = await this.sendMessage(
                 instance.instanceId,
-                toInstance.phoneNumber,
+                targetNumber,
                 content,
                 selectedType,
                 config.userId,
@@ -829,24 +1196,51 @@ export class WarmupService {
                   `Mensagem ${selectedType} enviada com sucesso`,
                 );
 
+                // Simular read receipt se configurado
+                if (config.config.readReceiptSimulation) {
+                  await this.humanBehaviorSimulator.simulateReadReceipt(
+                    instance.instanceId,
+                    messageId,
+                  );
+                }
+
+                // Rastrear profundidade da conversa
+                this.engagementOptimizer.trackConversationDepth(
+                  instance.instanceId,
+                  this.conversationHistory.get(instance.instanceId)
+                    ?.length || 0,
+                );
+
                 if (
                   selectedType === 'text' &&
                   Math.random() < config.config.reactionChance
                 ) {
                   console.log('Aguardando para reagir à mensagem...');
-                  await this.delay(2000, 4000);
+                  await new Promise((resolve) =>
+                    setTimeout(
+                      resolve,
+                      Math.floor(Math.random() * 2000) + 2000,
+                    ),
+                  );
                   await this.sendReaction(
                     instance.instanceId,
-                    toInstance.phoneNumber,
+                    targetNumber,
                     messageId,
                     config,
                   );
                 }
 
+                // Aplicar delay otimizado baseado no engajamento
+                const optimizedDelay = Math.max(optimalDelay, 8000);
                 console.log(
-                  'Aguardando antes da próxima mensagem...',
+                  `Aguardando ${optimizedDelay}ms antes da próxima mensagem (otimizado)...`,
                 );
-                await this.delay(8000, 20000);
+                await new Promise((resolve) =>
+                  setTimeout(
+                    resolve,
+                    optimizedDelay + Math.floor(Math.random() * 5000),
+                  ),
+                );
               }
             }
           } catch (error) {
@@ -858,14 +1252,70 @@ export class WarmupService {
               await this.stopWarmup(instance.instanceId);
               break;
             }
-            await this.delay(10000, 20000);
+            await new Promise((resolve) =>
+              setTimeout(
+                resolve,
+                Math.floor(Math.random() * 10000) + 10000,
+              ),
+            );
           }
+        }
+
+        // Atualizar status periodicamente
+        if (
+          Math.random() < (config.config.statusUpdateChance || 0.1)
+        ) {
+          const statusTexts = config.config.statusTexts || [
+            'Disponível',
+            'Em reunião',
+            'No trabalho',
+          ];
+          const randomStatus = this.getRandomItem(statusTexts);
+          console.log(`Atualizando status para: ${randomStatus}`);
+          await this.updateStatus(
+            instance.instanceId,
+            randomStatus,
+            config,
+          );
+        }
+
+        // Atualizar perfil periodicamente
+        if (
+          Math.random() < (config.config.profileUpdateChance || 0.05)
+        ) {
+          const profileNames = config.config.profileNames || [
+            'João Silva',
+            'Maria Santos',
+          ];
+          const profileBios = config.config.profileBios || [
+            'Desenvolvedor',
+            'Analista',
+          ];
+          const randomName = this.getRandomItem(profileNames);
+          const randomBio = this.getRandomItem(profileBios);
+          console.log(
+            `Atualizando perfil: ${randomName} - ${randomBio}`,
+          );
+          await this.updateProfile(
+            instance.instanceId,
+            {
+              name: randomName,
+              bio: randomBio,
+              status: 'online',
+            },
+            config,
+          );
         }
 
         console.log(
           'Finalizando ciclo de mensagens, aguardando próximo ciclo...',
         );
-        await this.delay(15000, 30000);
+        await new Promise((resolve) =>
+          setTimeout(
+            resolve,
+            Math.floor(Math.random() * 15000) + 15000,
+          ),
+        );
       } catch (error) {
         console.error('Erro no loop principal:', error);
         if (
@@ -875,7 +1325,12 @@ export class WarmupService {
           await this.stopWarmup(instance.instanceId);
           break;
         }
-        await this.delay(20000, 40000);
+        await new Promise((resolve) =>
+          setTimeout(
+            resolve,
+            Math.floor(Math.random() * 20000) + 20000,
+          ),
+        );
       }
     }
   }
@@ -948,7 +1403,27 @@ export class WarmupService {
         throw new Error('Limite do plano atingido');
       }
 
-      const formattedNumber = to.replace('@s.whatsapp.net', '');
+      // Verificar se é um grupo (contém @g.us) ou número privado
+      const isGroup = to.includes('@g.us');
+      const formattedNumber = isGroup
+        ? to
+        : to.replace('@s.whatsapp.net', '');
+
+      // Verificar se é um tipo avançado que precisa de tratamento especial
+      if (
+        ['document', 'location', 'contact', 'poll'].includes(
+          messageType,
+        )
+      ) {
+        return await this.sendAdvancedMessage(
+          instanceId,
+          formattedNumber,
+          content,
+          messageType,
+          userId,
+        );
+      }
+
       const config = this.createMessageConfig(
         instanceId,
         formattedNumber,
@@ -959,6 +1434,7 @@ export class WarmupService {
       console.log(`\n=== Iniciando envio de ${messageType} ===`);
       console.log(`Instância: ${instanceId}`);
       console.log(`Destinatário: ${formattedNumber}`);
+      console.log(`Tipo: ${isGroup ? 'Grupo' : 'Privado'}`);
       console.log(`Endpoint: ${config.endpoint}`);
       console.log('Payload:', {
         ...config.payload,
@@ -967,7 +1443,12 @@ export class WarmupService {
         sticker: config.payload.sticker ? '[BASE64]' : undefined,
       });
 
-      await this.delay(config.delay, config.delay + 1000);
+      await new Promise((resolve) =>
+        setTimeout(
+          resolve,
+          config.delay + Math.floor(Math.random() * 1000),
+        ),
+      );
 
       const response = await axios.post<ApiResponse>(
         config.endpoint,
@@ -1006,6 +1487,58 @@ export class WarmupService {
     }
   }
 
+  private async sendAdvancedMessage(
+    instanceId: string,
+    to: string,
+    content: any,
+    messageType: string,
+    userId: string,
+  ): Promise<string | undefined> {
+    try {
+      switch (messageType) {
+        case 'document':
+          return await this.sendDocument(
+            instanceId,
+            to,
+            content,
+            {} as WarmupConfig,
+          );
+        case 'location':
+          return await this.sendLocation(
+            instanceId,
+            to,
+            content,
+            {} as WarmupConfig,
+          );
+        case 'contact':
+          return await this.sendContact(
+            instanceId,
+            to,
+            content,
+            {} as WarmupConfig,
+          );
+        case 'poll':
+          return await this.sendPoll(
+            instanceId,
+            to,
+            content,
+            {} as WarmupConfig,
+          );
+        default:
+          console.error(
+            `Tipo de mensagem avançada não suportado: ${messageType}`,
+          );
+          return false;
+      }
+    } catch (error) {
+      console.error(
+        `Erro ao enviar mensagem avançada ${messageType}:`,
+        error,
+      );
+      return false;
+    }
+  }
+
   private createMessageConfig(
     instanceId: string,
     formattedNumber: string,
@@ -1013,6 +1546,7 @@ export class WarmupService {
     messageType: string,
   ): SendMessageConfig {
     const isMedia = typeof content === 'object';
+    const isGroup = formattedNumber.includes('@g.us');
     const config: SendMessageConfig = {
       endpoint: '',
       payload: {},
@@ -1132,6 +1666,218 @@ export class WarmupService {
     }
   }
 
+  // Novos métodos para tipos avançados de mensagem
+  private async sendDocument(
+    instanceId: string,
+    to: string,
+    document: any,
+    config: WarmupConfig,
+  ): Promise<string | false> {
+    try {
+      const payload = {
+        number: to,
+        document: document.base64,
+        fileName: document.fileName || 'document.pdf',
+        mimetype: document.mimetype || 'application/pdf',
+        caption: document.caption || '',
+      };
+
+      const response = await axios.post(
+        `${URL_API}/message/sendDocument/${instanceId}`,
+        payload,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: API_KEY,
+          },
+        },
+      );
+
+      if (response.data?.key?.id) {
+        await this.updateMediaStats(instanceId, 'document', true);
+        return response.data.key.id;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Erro ao enviar documento:', error);
+      return false;
+    }
+  }
+
+  private async sendLocation(
+    instanceId: string,
+    to: string,
+    location: any,
+    config: WarmupConfig,
+  ): Promise<string | false> {
+    try {
+      const payload = {
+        number: to,
+        latitude: location.latitude,
+        longitude: location.longitude,
+        name: location.name,
+        address: location.address,
+      };
+
+      const response = await axios.post(
+        `${URL_API}/message/sendLocation/${instanceId}`,
+        payload,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: API_KEY,
+          },
+        },
+      );
+
+      if (response.data?.key?.id) {
+        await this.updateMediaStats(instanceId, 'location', true);
+        return response.data.key.id;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Erro ao enviar localização:', error);
+      return false;
+    }
+  }
+
+  private async sendContact(
+    instanceId: string,
+    to: string,
+    contact: any,
+    config: WarmupConfig,
+  ): Promise<string | false> {
+    try {
+      const payload = {
+        number: to,
+        contact: {
+          name: contact.name,
+          number: contact.number,
+          email: contact.email,
+        },
+      };
+
+      const response = await axios.post(
+        `${URL_API}/message/sendContact/${instanceId}`,
+        payload,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: API_KEY,
+          },
+        },
+      );
+
+      if (response.data?.key?.id) {
+        await this.updateMediaStats(instanceId, 'contact', true);
+        return response.data.key.id;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Erro ao enviar contato:', error);
+      return false;
+    }
+  }
+
+  private async sendPoll(
+    instanceId: string,
+    to: string,
+    poll: any,
+    config: WarmupConfig,
+  ): Promise<string | false> {
+    try {
+      const payload = {
+        number: to,
+        question: poll.question,
+        options: poll.options,
+      };
+
+      const response = await axios.post(
+        `${URL_API}/message/sendPoll/${instanceId}`,
+        payload,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: API_KEY,
+          },
+        },
+      );
+
+      if (response.data?.key?.id) {
+        await this.updateMediaStats(instanceId, 'poll', true);
+        return response.data.key.id;
+      }
+
+      return false;
+    } catch (error) {
+      console.error('Erro ao enviar enquete:', error);
+      return false;
+    }
+  }
+
+  private async updateProfile(
+    instanceId: string,
+    profileData: any,
+    config: WarmupConfig,
+  ): Promise<boolean> {
+    try {
+      const payload = {
+        name: profileData.name,
+        bio: profileData.bio,
+        status: profileData.status,
+      };
+
+      await axios.post(
+        `${URL_API}/instance/updateProfile/${instanceId}`,
+        payload,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: API_KEY,
+          },
+        },
+      );
+
+      await this.updateMediaStats(instanceId, 'profile', true);
+      return true;
+    } catch (error) {
+      console.error('Erro ao atualizar perfil:', error);
+      return false;
+    }
+  }
+
+  private async updateStatus(
+    instanceId: string,
+    statusText: string,
+    config: WarmupConfig,
+  ): Promise<boolean> {
+    try {
+      const payload = {
+        status: statusText,
+      };
+
+      await axios.post(
+        `${URL_API}/instance/updateStatus/${instanceId}`,
+        payload,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+            apikey: API_KEY,
+          },
+        },
+      );
+
+      await this.updateMediaStats(instanceId, 'status', true);
+      return true;
+    } catch (error) {
+      console.error('Erro ao atualizar status:', error);
+      return false;
+    }
+  }
+
   private async sendRandomMedia(
     instanceId: string,
     to: string,
@@ -1165,10 +1911,11 @@ export class WarmupService {
   private getContentForType(
     type: string,
     contents: WarmupConfig['contents'],
-  ): string | MediaContent | null {
+  ): string | MediaContent | any {
     try {
-      const contentArray =
-        contents[`${type}s` as keyof typeof contents];
+      const contentKey = `${type}s` as keyof typeof contents;
+      const contentArray = contents[contentKey];
+
       if (
         !contentArray ||
         !Array.isArray(contentArray) ||
@@ -1178,7 +1925,7 @@ export class WarmupService {
         return null;
       }
 
-      const content = this.getRandomItem(contentArray);
+      const content = this.getRandomItem(contentArray as any[]);
 
       if (type === 'text') {
         return content as string;
@@ -1191,6 +1938,16 @@ export class WarmupService {
           fileName: content.fileName || `file.${type}`,
           mimetype: content.mimetype || this.getMimeType(type),
         };
+      }
+
+      // Para novos tipos de conteúdo
+      if (
+        type === 'document' ||
+        type === 'location' ||
+        type === 'contact' ||
+        type === 'poll'
+      ) {
+        return content;
       }
 
       return null;
@@ -1218,11 +1975,15 @@ export class WarmupService {
   private decideMessageType(config: WarmupConfig['config']): string {
     const random = Math.random();
     const chances = [
-      { type: 'text', chance: 0.35 }, // 35% chance
-      { type: 'audio', chance: 0.35 }, // 35% chance
-      { type: 'sticker', chance: 0.2 }, // 20% chance
-      { type: 'image', chance: 0.05 }, // 5% chance
-      { type: 'video', chance: 0.05 }, // 5% chance
+      { type: 'text', chance: config.textChance || 0.35 },
+      { type: 'audio', chance: config.audioChance || 0.25 },
+      { type: 'sticker', chance: config.stickerChance || 0.15 },
+      { type: 'image', chance: config.imageChance || 0.08 },
+      { type: 'video', chance: config.videoChance || 0.05 },
+      { type: 'document', chance: config.documentChance || 0.03 },
+      { type: 'location', chance: config.locationChance || 0.02 },
+      { type: 'contact', chance: config.contactChance || 0.02 },
+      { type: 'poll', chance: config.pollChance || 0.02 },
     ];
 
     let accumulated = 0;
@@ -1234,6 +1995,138 @@ export class WarmupService {
     }
 
     return 'text';
+  }
+
+  private getExternalNumbersList(): string[] {
+    return [
+      '5511999151515',
+      '553123320005',
+      '5511956860124',
+      '551134748029',
+      '551155728778',
+      '5521993153062',
+      '554832433664',
+      '551128530702',
+      '554791107025',
+      '551128530762',
+      '5511937577552',
+      '5521994017240',
+      '557532216114',
+      '5511972146733',
+      '5511915862328',
+      '559230421437',
+      '555133825500',
+      '5511934505884',
+      '5511975295195',
+      '5511912609190',
+      '5511994304972',
+      '5511939036857',
+      '551126265327',
+      '551131552800',
+      '555599897514',
+      '554732373771',
+      '551940421800',
+      '558534866366',
+      '555433176300',
+      '558007274660',
+      '5511976664900',
+      '5511986293294',
+      '5511934819317',
+      '558881822574',
+      '551156130202',
+      '551132300363',
+      '5511915828037',
+      '551821018311',
+      '551130422170',
+      '555133143838',
+      '558140043050',
+      '558006661515',
+      '551121098888',
+      '552135909000',
+      '551128530325',
+      '551132301493',
+      '555133343432',
+      '558140043230',
+      '5521993410670',
+      '5511941836701',
+      '5511940646175',
+      '5511941536754',
+      '558000207758',
+      '558001040104',
+      '552120423829',
+      '551130048007',
+      '5511944469719',
+      '551133452288',
+      '5519983630058',
+      '552721247700',
+      '553183386125',
+      '5511963785460',
+      '556135224521',
+      '551131354148',
+      '5521981281045',
+      '558002320800',
+      '5511955581462',
+      '552134601746',
+      '551140644106',
+      '554195053843',
+      '551151999851',
+      '551142008293',
+      '551142000252',
+      '5511943323273',
+      '5511973079915',
+      '5511993428075',
+      '551150621456',
+      '555433270042',
+      '558340629108',
+      '553133849008',
+      '552138121921',
+      '5511943079112',
+      '5511911875504',
+      '551148390436',
+      '558331422688',
+      '5511988952656',
+      '5521980090636',
+      '551135223406',
+      '551935006321',
+      '557182197732',
+      '551131985816',
+      '551131360110',
+      '5511972888604',
+      '5511934687141',
+      '5511943396419',
+      '558007442110',
+      '551142000355',
+      '553432576000',
+      '5511976216004',
+      '555191490457',
+      '5521991776152',
+      '5511933505743',
+      '5511988913555',
+      '5511945382314',
+      '553198780286',
+      '551132322935',
+      '5511942114304',
+      '558001488000',
+      '552139007070',
+      '551151963400',
+      '553132612801',
+      '558000550073',
+      '558007268010',
+      '551150439404',
+      '551130037242',
+      '5521967446767',
+      '5511976379870',
+      '5521965247184',
+      '551137249000',
+      '5511944882022',
+      '5511975691546',
+      '5511964146890',
+      '5511913185864',
+      '5511999910621',
+      '556140040001',
+      '551140201955',
+      '5521973015191',
+    ];
   }
 }
 
