@@ -134,16 +134,16 @@ O sistema registra logs detalhados:
 - **FFmpeg**: Processamento de vídeos e áudios
 - **Node.js**: Runtime
 
-## Instalação
+## Instalanfiguração
+
+O serviço cria automaticamente um diretório `temp/` para processamento temporário de arquivos.
+ção
 
 ```bash
 npm install sharp ffmpeg-static
 ```
 
-## Configuração
-
-O serviço cria automaticamente um diretório `temp/` para processamento temporário de arquivos.
-
+## Co
 ## Troubleshooting
 
 ### Erro: "FFmpeg não encontrado"
