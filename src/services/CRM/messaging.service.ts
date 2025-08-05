@@ -1,4 +1,4 @@
-import { MessageStatus, Prisma } from "@prisma/client";
+import { MessageStatus } from "@prisma/client";
 import { prisma } from "../../lib/prisma";
 import { pubsub } from "../../lib/pubsub";
 import { logger } from "../../utils/logger";
@@ -241,8 +241,7 @@ export class CRMMessagingService {
       });
 
       messagingLogger.info(
-        `Mídia enviada com sucesso, ID: ${
-          response?.messageId || pendingMessage.messageId
+        `Mídia enviada com sucesso, ID: ${response?.messageId || pendingMessage.messageId
         }`
       );
       return {
@@ -453,8 +452,7 @@ export class CRMMessagingService {
       });
 
       messagingLogger.info(
-        `Botões enviados com sucesso, ID: ${
-          response?.messageId || pendingMessage.messageId
+        `Botões enviados com sucesso, ID: ${response?.messageId || pendingMessage.messageId
         }`
       );
       return {
@@ -585,8 +583,7 @@ export class CRMMessagingService {
       });
 
       messagingLogger.info(
-        `Lista enviada com sucesso, ID: ${
-          response?.messageId || pendingMessage.messageId
+        `Lista enviada com sucesso, ID: ${response?.messageId || pendingMessage.messageId
         }`
       );
       return {
@@ -911,8 +908,7 @@ export class CRMMessagingService {
       });
 
       messagingLogger.info(
-        `Mensagem ${msgType} ${
-          isSentByMe ? "enviada" : "recebida"
+        `Mensagem ${msgType} ${isSentByMe ? "enviada" : "recebida"
         } processada: ${key.id}`
       );
 
@@ -1068,9 +1064,7 @@ export class CRMMessagingService {
           messageId: params.messageId,
           reaction: params.reaction,
           userId: params.userId,
-          conversation: {
-            connect: { id: params.conversationId },
-          },
+          conversationId: params.conversationId,
         },
       });
 

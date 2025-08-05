@@ -1,4 +1,5 @@
 // src/services/hotmart.service.ts
+import type { Prisma } from '@prisma/client';
 import { PrismaClient } from '@prisma/client';
 import axios from 'axios';
 import { logger } from '../utils/logger';
@@ -9,12 +10,12 @@ const prisma = new PrismaClient();
 // Interfaces para os tipos de dados
 interface HotmartWebhookData {
   event: string;
-  event_date: string;
+  eventDate: string;
   data: {
     transaction: string;
-    subscriber_code?: string;
-    product_id: string;
-    product_name: string;
+    subscriberCode?: string;
+    productId: string;
+    productName: string;
     customer: {
       name: string;
       email: string;
@@ -24,7 +25,7 @@ interface HotmartWebhookData {
         country?: string;
         city?: string;
         state?: string;
-        zip_code?: string;
+        zipCode?: string;
         address?: string;
         number?: string;
         complement?: string;
@@ -38,22 +39,22 @@ interface HotmartWebhookData {
       value: number;
       currency: string;
       installments?: number;
-      total_installments?: number;
+      totalInstallments?: number;
     };
     subscription?: {
       status: string;
       frequency?: string;
-      start_date?: string;
-      end_date?: string;
-      next_charge_date?: string;
-      cancelation_date?: string;
-      cancelation_reason?: string;
+      startDate?: string;
+      endDate?: string;
+      nextChargeDate?: string;
+      cancelationDate?: string;
+      cancelationReason?: string;
     };
     affiliate?: {
       code?: string;
       name?: string;
-      commission_value?: number;
-      commission_percentage?: number;
+      commissionValue?: number;
+      commissionPercentage?: number;
     };
     producer?: {
       code?: string;
@@ -70,25 +71,26 @@ interface HotmartWebhookData {
 
 interface HotmartApiResponse {
   success: boolean;
-  data?: any;
+  data?: Record<string, unknown>;
   error?: string;
 }
 
 interface HotmartSubscription {
-  subscriber_code: string;
+  subscriberCode: string;
   status: string;
-  product_id: string;
-  product_name: string;
+  productId: string;
+  productName: string;
   subscriber: {
     name: string;
     email: string;
     document?: string;
     phone?: string;
+    userId?: string;
     address?: {
       country?: string;
       city?: string;
       state?: string;
-      zip_code?: string;
+      zipCode?: string;
       address?: string;
       number?: string;
       complement?: string;
@@ -105,17 +107,17 @@ interface HotmartSubscription {
   subscription: {
     status: string;
     frequency?: string;
-    start_date?: string;
-    end_date?: string;
-    next_charge_date?: string;
-    cancelation_date?: string;
-    cancelation_reason?: string;
+    startDate?: string;
+    endDate?: string;
+    nextChargeDate?: string;
+    cancelationDate?: string;
+    cancelationReason?: string;
   };
   affiliate?: {
     code?: string;
     name?: string;
-    commission_value?: number;
-    commission_percentage?: number;
+    commissionValue?: number;
+    commissionPercentage?: number;
   };
   producer?: {
     code?: string;
@@ -131,39 +133,39 @@ interface HotmartSubscription {
 
 interface HotmartTransaction {
   transaction: string;
-  subscriber_code: string;
-  product_id: string;
-  transaction_type: string;
-  transaction_status: string;
-  transaction_value: number;
-  transaction_currency: string;
-  payment_type?: string;
-  payment_method?: string;
-  payment_status: string;
-  payment_date?: string;
-  due_date?: string;
-  refund_date?: string;
-  refund_value?: number;
-  refund_reason?: string;
-  chargeback_date?: string;
-  chargeback_value?: number;
-  chargeback_reason?: string;
-  installment_number?: number;
-  total_installments?: number;
-  affiliate_code?: string;
-  affiliate_name?: string;
-  commission_value?: number;
-  commission_percentage?: number;
-  producer_code?: string;
-  producer_name?: string;
-  producer_value?: number;
-  producer_percentage?: number;
-  platform_value?: number;
-  platform_percentage?: number;
+  subscriberCode: string;
+  productId: string;
+  transactionType: string;
+  transactionStatus: string;
+  transactionValue: number;
+  transactionCurrency: string;
+  paymentType?: string;
+  paymentMethod?: string;
+  paymentStatus: string;
+  paymentDate?: string;
+  dueDate?: string;
+  refundDate?: string;
+  refundValue?: number;
+  refundReason?: string;
+  chargebackDate?: string;
+  chargebackValue?: number;
+  chargebackReason?: string;
+  installmentNumber?: number;
+  totalInstallments?: number;
+  affiliateCode?: string;
+  affiliateName?: string;
+  commissionValue?: number;
+  commissionPercentage?: number;
+  producerCode?: string;
+  producerName?: string;
+  producerValue?: number;
+  producerPercentage?: number;
+  platformValue?: number;
+  platformPercentage?: number;
 }
 
 interface HotmartUser {
-  user_id: string;
+  userId: string;
   name: string;
   email: string;
   document?: string;
@@ -172,7 +174,7 @@ interface HotmartUser {
     country?: string;
     city?: string;
     state?: string;
-    zip_code?: string;
+    zipCode?: string;
     address?: string;
     number?: string;
     complement?: string;
@@ -230,7 +232,7 @@ export class HotmartService {
   /**
    * Faz uma requisição autenticada para a API da Hotmart
    */
-  private async makeAuthenticatedRequest(endpoint: string, params: any = {}): Promise<any> {
+  private async makeAuthenticatedRequest(endpoint: string, params: Record<string, unknown> = {}): Promise<Record<string, unknown>> {
     try {
       const token = await this.authenticate();
 
@@ -262,7 +264,7 @@ export class HotmartService {
 
       logger.info(`Processando webhook: ${webhookData.event}`, {
         transaction: webhookData.data.transaction,
-        subscriber_code: webhookData.data.subscriber_code,
+        subscriberCode: webhookData.data.subscriberCode,
       });
 
       // Registrar evento
@@ -271,34 +273,34 @@ export class HotmartService {
       // Processar evento baseado no tipo
       switch (webhookData.event) {
         case 'PURCHASE_APPROVED':
-          await this.handlePurchaseApproved(webhookData.data);
+          await this.handlePurchaseApproved(webhookData.data as HotmartWebhookData['data']);
           break;
         case 'SUBSCRIPTION_CANCELLED':
-          await this.handleSubscriptionCancelled(webhookData.data);
+          await this.handleSubscriptionCancelled(webhookData.data as HotmartWebhookData['data']);
           break;
         case 'SUBSCRIPTION_CHANGED':
-          await this.handleSubscriptionChanged(webhookData.data);
+          await this.handleSubscriptionChanged(webhookData.data as HotmartWebhookData['data']);
           break;
         case 'SUBSCRIPTION_BILLING_DATE_UPDATED':
-          await this.handleSubscriptionBillingDateUpdated(webhookData.data);
+          await this.handleSubscriptionBillingDateUpdated(webhookData.data as HotmartWebhookData['data']);
           break;
         case 'PURCHASE_CANCELLED':
-          await this.handlePurchaseCancelled(webhookData.data);
+          await this.handlePurchaseCancelled(webhookData.data as HotmartWebhookData['data']);
           break;
         case 'PURCHASE_REFUNDED':
-          await this.handlePurchaseRefunded(webhookData.data);
+          await this.handlePurchaseRefunded(webhookData.data as HotmartWebhookData['data']);
           break;
         case 'CHARGEBACK':
-          await this.handleChargeback(webhookData.data);
+          await this.handleChargeback(webhookData.data as HotmartWebhookData['data']);
           break;
         case 'PURCHASE_EXPIRED':
-          await this.handlePurchaseExpired(webhookData.data);
+          await this.handlePurchaseExpired(webhookData.data as HotmartWebhookData['data']);
           break;
         case 'PURCHASE_DELAYED':
-          await this.handlePurchaseDelayed(webhookData.data);
+          await this.handlePurchaseDelayed(webhookData.data as HotmartWebhookData['data']);
           break;
         case 'CART_ABANDONED':
-          await this.handleCartAbandoned(webhookData.data);
+          await this.handleCartAbandoned(webhookData.data as HotmartWebhookData['data']);
           break;
         default:
           logger.warn(`Evento não tratado: ${webhookData.event}`);
@@ -324,11 +326,11 @@ export class HotmartService {
     return await prisma.hotmartEvent.create({
       data: {
         eventType: webhookData.event,
-        eventData: webhookData as any,
-        eventDate: new Date(webhookData.event_date),
+        eventData: webhookData as unknown as Prisma.InputJsonValue,
+        eventDate: new Date(webhookData.eventDate),
         transaction: webhookData.data.transaction,
-        subscriberCode: webhookData.data.subscriber_code,
-        productId: webhookData.data.product_id,
+        subscriberCode: webhookData.data.subscriberCode,
+        productId: webhookData.data.productId,
         status: 'PENDING',
       },
     });
@@ -337,13 +339,13 @@ export class HotmartService {
   /**
    * Processa compra aprovada
    */
-  private async handlePurchaseApproved(data: any) {
+  private async handlePurchaseApproved(data: HotmartWebhookData['data']) {
     try {
       logger.info('Processando compra aprovada:', data.transaction);
 
       // Verificar se já existe um cliente com este subscriber_code
       let customer = await prisma.hotmartCustomer.findUnique({
-        where: { subscriberCode: data.subscriber_code },
+        where: { subscriberCode: data.subscriberCode },
       });
 
       if (customer) {
@@ -357,9 +359,9 @@ export class HotmartService {
             subscriptionValue: data.payment.value,
             subscriptionCurrency: data.payment.currency,
             subscriptionFrequency: data.subscription?.frequency,
-            subscriptionStartDate: data.subscription?.start_date ? new Date(data.subscription.start_date) : null,
-            subscriptionEndDate: data.subscription?.end_date ? new Date(data.subscription.end_date) : null,
-            nextChargeDate: data.subscription?.next_charge_date ? new Date(data.subscription.next_charge_date) : null,
+            subscriptionStartDate: data.subscription?.startDate ? new Date(data.subscription.startDate) : null,
+            subscriptionEndDate: data.subscription?.endDate ? new Date(data.subscription.endDate) : null,
+            nextChargeDate: data.subscription?.nextChargeDate ? new Date(data.subscription.nextChargeDate) : null,
             isActive: true,
             updatedAt: new Date(),
           },
@@ -368,10 +370,10 @@ export class HotmartService {
         // Criar novo cliente
         customer = await prisma.hotmartCustomer.create({
           data: {
-            subscriberCode: data.subscriber_code,
+            subscriberCode: data.subscriberCode,
             transaction: data.transaction,
-            productId: data.product_id,
-            productName: data.product_name,
+            productId: data.productId,
+            productName: data.productName,
             customerName: data.customer.name,
             customerEmail: data.customer.email,
             customerPhone: data.customer.phone,
@@ -379,7 +381,7 @@ export class HotmartService {
             customerCountry: data.customer.address?.country,
             customerCity: data.customer.address?.city,
             customerState: data.customer.address?.state,
-            customerZipCode: data.customer.address?.zip_code,
+            customerZipCode: data.customer.address?.zipCode,
             customerAddress: data.customer.address?.address,
             customerNumber: data.customer.address?.number,
             customerComplement: data.customer.address?.complement,
@@ -391,21 +393,21 @@ export class HotmartService {
             subscriptionValue: data.payment.value,
             subscriptionCurrency: data.payment.currency,
             subscriptionFrequency: data.subscription?.frequency,
-            subscriptionStartDate: data.subscription?.start_date ? new Date(data.subscription.start_date) : null,
-            subscriptionEndDate: data.subscription?.end_date ? new Date(data.subscription.end_date) : null,
-            nextChargeDate: data.subscription?.next_charge_date ? new Date(data.subscription.next_charge_date) : null,
+            subscriptionStartDate: data.subscription?.startDate ? new Date(data.subscription.startDate) : null,
+            subscriptionEndDate: data.subscription?.endDate ? new Date(data.subscription.endDate) : null,
+            nextChargeDate: data.subscription?.nextChargeDate ? new Date(data.subscription.nextChargeDate) : null,
             affiliateCode: data.affiliate?.code,
             affiliateName: data.affiliate?.name,
             producerCode: data.producer?.code,
             producerName: data.producer?.name,
             isActive: true,
             isTrial: data.subscription?.status === 'TRIAL',
-            trialEndDate: data.subscription?.status === 'TRIAL' ? new Date(data.subscription.end_date) : null,
+            trialEndDate: data.subscription?.status === 'TRIAL' ? new Date(data.subscription.endDate) : null,
           },
         });
 
         // Enriquecer dados do cliente via API
-        await this.enrichCustomerData(customer.id, data.subscriber_code);
+        await this.enrichCustomerData(customer.id, data.subscriberCode);
 
         // Enviar boas-vindas
         await this.sendWelcomeMessage(customer);
@@ -424,12 +426,12 @@ export class HotmartService {
   /**
    * Processa cancelamento de assinatura
    */
-  private async handleSubscriptionCancelled(data: any) {
+  private async handleSubscriptionCancelled(data: HotmartWebhookData['data']) {
     try {
-      logger.info('Processando cancelamento de assinatura:', data.subscriber_code);
+      logger.info('Processando cancelamento de assinatura:', data.subscriberCode);
 
       const customer = await prisma.hotmartCustomer.findUnique({
-        where: { subscriberCode: data.subscriber_code },
+        where: { subscriberCode: data.subscriberCode },
       });
 
       if (customer) {
@@ -437,8 +439,8 @@ export class HotmartService {
           where: { id: customer.id },
           data: {
             subscriptionStatus: 'CANCELLED',
-            cancelationDate: data.subscription?.cancelation_date ? new Date(data.subscription.cancelation_date) : new Date(),
-            cancelationReason: data.subscription?.cancelation_reason,
+            cancelationDate: data.subscription?.cancelationDate ? new Date(data.subscription.cancelationDate) : new Date(),
+            cancelationReason: data.subscription?.cancelationReason,
             isActive: false,
             updatedAt: new Date(),
           },
@@ -463,26 +465,26 @@ export class HotmartService {
   /**
    * Processa troca de plano
    */
-  private async handleSubscriptionChanged(data: any) {
+  private async handleSubscriptionChanged(data: HotmartWebhookData['data']) {
     try {
-      logger.info('Processando troca de plano:', data.subscriber_code);
+      logger.info('Processando troca de plano:', data.subscriberCode);
 
       const customer = await prisma.hotmartCustomer.findUnique({
-        where: { subscriberCode: data.subscriber_code },
+        where: { subscriberCode: data.subscriberCode },
       });
 
       if (customer) {
         await prisma.hotmartCustomer.update({
           where: { id: customer.id },
           data: {
-            productId: data.product_id,
-            productName: data.product_name,
+            productId: data.productId,
+            productName: data.productName,
             subscriptionValue: data.payment.value,
             subscriptionCurrency: data.payment.currency,
             subscriptionFrequency: data.subscription?.frequency,
-            subscriptionStartDate: data.subscription?.start_date ? new Date(data.subscription.start_date) : null,
-            subscriptionEndDate: data.subscription?.end_date ? new Date(data.subscription.end_date) : null,
-            nextChargeDate: data.subscription?.next_charge_date ? new Date(data.subscription.next_charge_date) : null,
+            subscriptionStartDate: data.subscription?.startDate ? new Date(data.subscription.startDate) : null,
+            subscriptionEndDate: data.subscription?.endDate ? new Date(data.subscription.endDate) : null,
+            nextChargeDate: data.subscription?.nextChargeDate ? new Date(data.subscription.nextChargeDate) : null,
             updatedAt: new Date(),
           },
         });
@@ -498,19 +500,19 @@ export class HotmartService {
   /**
    * Processa atualização de data de cobrança
    */
-  private async handleSubscriptionBillingDateUpdated(data: any) {
+  private async handleSubscriptionBillingDateUpdated(data: HotmartWebhookData['data']) {
     try {
-      logger.info('Processando atualização de data de cobrança:', data.subscriber_code);
+      logger.info('Processando atualização de data de cobrança:', data.subscriberCode);
 
       const customer = await prisma.hotmartCustomer.findUnique({
-        where: { subscriberCode: data.subscriber_code },
+        where: { subscriberCode: data.subscriberCode },
       });
 
       if (customer) {
         await prisma.hotmartCustomer.update({
           where: { id: customer.id },
           data: {
-            nextChargeDate: data.subscription?.next_charge_date ? new Date(data.subscription.next_charge_date) : null,
+            nextChargeDate: data.subscription?.nextChargeDate ? new Date(data.subscription.nextChargeDate) : null,
             updatedAt: new Date(),
           },
         });
@@ -526,7 +528,7 @@ export class HotmartService {
   /**
    * Processa compra cancelada
    */
-  private async handlePurchaseCancelled(data: any) {
+  private async handlePurchaseCancelled(data: HotmartWebhookData['data']) {
     try {
       logger.info('Processando compra cancelada:', data.transaction);
 
@@ -556,7 +558,7 @@ export class HotmartService {
   /**
    * Processa reembolso
    */
-  private async handlePurchaseRefunded(data: any) {
+  private async handlePurchaseRefunded(data: HotmartWebhookData['data']) {
     try {
       logger.info('Processando reembolso:', data.transaction);
 
@@ -584,7 +586,7 @@ export class HotmartService {
   /**
    * Processa chargeback
    */
-  private async handleChargeback(data: any) {
+  private async handleChargeback(data: HotmartWebhookData['data']) {
     try {
       logger.info('Processando chargeback:', data.transaction);
 
@@ -612,7 +614,7 @@ export class HotmartService {
   /**
    * Processa compra expirada
    */
-  private async handlePurchaseExpired(data: any) {
+  private async handlePurchaseExpired(data: HotmartWebhookData['data']) {
     try {
       logger.info('Processando compra expirada:', data.transaction);
 
@@ -642,7 +644,7 @@ export class HotmartService {
   /**
    * Processa compra atrasada
    */
-  private async handlePurchaseDelayed(data: any) {
+  private async handlePurchaseDelayed(data: HotmartWebhookData['data']) {
     try {
       logger.info('Processando compra atrasada:', data.transaction);
 
@@ -671,7 +673,7 @@ export class HotmartService {
   /**
    * Processa abandono de carrinho
    */
-  private async handleCartAbandoned(data: any) {
+  private async handleCartAbandoned(data: HotmartWebhookData['data']) {
     try {
       logger.info('Processando abandono de carrinho:', data.transaction);
 
@@ -679,10 +681,10 @@ export class HotmartService {
       await prisma.hotmartEvent.create({
         data: {
           eventType: 'CART_ABANDONED',
-          eventData: data as any,
+          eventData: data as unknown as Prisma.InputJsonValue,
           eventDate: new Date(),
           transaction: data.transaction,
-          productId: data.product_id,
+          productId: data.productId,
           status: 'PROCESSED',
         },
       });
@@ -707,7 +709,7 @@ export class HotmartService {
         await prisma.hotmartCustomer.update({
           where: { id: customerId },
           data: {
-            hotmartUserId: subscriptionData.subscriber?.user_id,
+            hotmartUserId: subscriptionData.subscriber?.userId,
             hotmartUserEmail: subscriptionData.subscriber?.email,
             hotmartUserName: subscriptionData.subscriber?.name,
             hotmartUserPhone: subscriptionData.subscriber?.phone,
@@ -715,7 +717,7 @@ export class HotmartService {
             hotmartUserCountry: subscriptionData.subscriber?.address?.country,
             hotmartUserCity: subscriptionData.subscriber?.address?.city,
             hotmartUserState: subscriptionData.subscriber?.address?.state,
-            hotmartUserZipCode: subscriptionData.subscriber?.address?.zip_code,
+            hotmartUserZipCode: subscriptionData.subscriber?.address?.zipCode,
             hotmartUserAddress: subscriptionData.subscriber?.address?.address,
             hotmartUserNumber: subscriptionData.subscriber?.address?.number,
             hotmartUserComplement: subscriptionData.subscriber?.address?.complement,
@@ -726,8 +728,8 @@ export class HotmartService {
       }
 
       // Buscar dados do usuário se houver user_id
-      if (subscriptionData?.subscriber?.user_id) {
-        const userData = await this.getUserDetails(subscriptionData.subscriber.user_id);
+      if (subscriptionData?.subscriber?.userId) {
+        const userData = await this.getUserDetails(subscriptionData.subscriber.userId);
         if (userData) {
           await prisma.hotmartCustomer.update({
             where: { id: customerId },
@@ -739,7 +741,7 @@ export class HotmartService {
               hotmartUserCountry: userData.address?.country,
               hotmartUserCity: userData.address?.city,
               hotmartUserState: userData.address?.state,
-              hotmartUserZipCode: userData.address?.zip_code,
+              hotmartUserZipCode: userData.address?.zipCode,
               hotmartUserAddress: userData.address?.address,
               hotmartUserNumber: userData.address?.number,
               hotmartUserComplement: userData.address?.complement,
@@ -760,13 +762,13 @@ export class HotmartService {
   /**
    * Registra transação no banco de dados
    */
-  private async registerTransaction(data: any, customerId: string) {
+  private async registerTransaction(data: HotmartWebhookData['data'], customerId: string) {
     try {
       await prisma.hotmartTransaction.create({
         data: {
           transactionId: data.transaction,
-          subscriberCode: data.subscriber_code,
-          productId: data.product_id,
+          subscriberCode: data.subscriberCode,
+          productId: data.productId,
           transactionType: 'PURCHASE',
           transactionStatus: 'APPROVED',
           transactionValue: data.payment.value,
@@ -776,11 +778,11 @@ export class HotmartService {
           paymentStatus: data.payment.status,
           paymentDate: new Date(),
           installmentNumber: data.payment.installments,
-          totalInstallments: data.payment.total_installments,
+          totalInstallments: data.payment.totalInstallments,
           affiliateCode: data.affiliate?.code,
           affiliateName: data.affiliate?.name,
-          commissionValue: data.affiliate?.commission_value,
-          commissionPercentage: data.affiliate?.commission_percentage,
+          commissionValue: data.affiliate?.commissionValue,
+          commissionPercentage: data.affiliate?.commissionPercentage,
           producerCode: data.producer?.code,
           producerName: data.producer?.name,
           producerValue: data.producer?.value,
@@ -852,11 +854,13 @@ export class HotmartService {
   async getSubscriptionDetails(subscriberCode: string): Promise<HotmartSubscription | null> {
     try {
       const response = await this.makeAuthenticatedRequest('/payments/api/v1/subscriptions', {
+        // biome-ignore lint/style/useNamingConvention: <explanation>
         subscriber_code: subscriberCode,
       });
 
-      if (response.items && response.items.length > 0) {
-        return response.items[0];
+      const items = response.items as any[];
+      if (items && items.length > 0) {
+        return items[0];
       }
 
       return null;
@@ -872,11 +876,13 @@ export class HotmartService {
   async getUserDetails(userId: string): Promise<HotmartUser | null> {
     try {
       const response = await this.makeAuthenticatedRequest('/payments/api/v1/sales/users', {
+        // biome-ignore lint/style/useNamingConvention: <explanation>
         user_id: userId,
       });
 
-      if (response.items && response.items.length > 0) {
-        return response.items[0];
+      const items = response.items as any[];
+      if (items && items.length > 0) {
+        return items[0];
       }
 
       return null;
@@ -913,6 +919,7 @@ export class HotmartService {
         },
         {
           headers: {
+            // biome-ignore lint/style/useNamingConvention: <explanation>
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json',
           },
@@ -1093,16 +1100,16 @@ export class HotmartService {
       for (const subscription of subscriptions.items || []) {
         try {
           const existingCustomer = await prisma.hotmartCustomer.findUnique({
-            where: { subscriberCode: subscription.subscriber_code },
+            where: { subscriberCode: subscription.subscriberCode },
           });
 
           if (!existingCustomer) {
             // Criar novo cliente
             await prisma.hotmartCustomer.create({
               data: {
-                subscriberCode: subscription.subscriber_code,
-                productId: subscription.product_id,
-                productName: subscription.product_name,
+                subscriberCode: subscription.subscriberCode,
+                productId: subscription.productId,
+                productName: subscription.productName,
                 customerName: subscription.subscriber.name,
                 customerEmail: subscription.subscriber.email,
                 customerPhone: subscription.subscriber.phone,
@@ -1110,7 +1117,7 @@ export class HotmartService {
                 customerCountry: subscription.subscriber.address?.country,
                 customerCity: subscription.subscriber.address?.city,
                 customerState: subscription.subscriber.address?.state,
-                customerZipCode: subscription.subscriber.address?.zip_code,
+                customerZipCode: subscription.subscriber.address?.zipCode,
                 customerAddress: subscription.subscriber.address?.address,
                 customerNumber: subscription.subscriber.address?.number,
                 customerComplement: subscription.subscriber.address?.complement,
@@ -1122,23 +1129,23 @@ export class HotmartService {
                 subscriptionValue: subscription.payment.value,
                 subscriptionCurrency: subscription.payment.currency,
                 subscriptionFrequency: subscription.subscription.frequency,
-                subscriptionStartDate: subscription.subscription.start_date ? new Date(subscription.subscription.start_date) : null,
-                subscriptionEndDate: subscription.subscription.end_date ? new Date(subscription.subscription.end_date) : null,
-                nextChargeDate: subscription.subscription.next_charge_date ? new Date(subscription.subscription.next_charge_date) : null,
+                subscriptionStartDate: subscription.subscription.startDate ? new Date(subscription.subscription.startDate) : null,
+                subscriptionEndDate: subscription.subscription.endDate ? new Date(subscription.subscription.endDate) : null,
+                nextChargeDate: subscription.subscription.nextChargeDate ? new Date(subscription.subscription.nextChargeDate) : null,
                 affiliateCode: subscription.affiliate?.code,
                 affiliateName: subscription.affiliate?.name,
                 producerCode: subscription.producer?.code,
                 producerName: subscription.producer?.name,
                 isActive: true,
                 isTrial: subscription.subscription.status === 'TRIAL',
-                trialEndDate: subscription.subscription.status === 'TRIAL' ? new Date(subscription.subscription.end_date) : null,
+                trialEndDate: subscription.subscription.status === 'TRIAL' ? new Date(subscription.subscription.endDate) : null,
               },
             });
 
             syncedCount++;
           }
         } catch (error) {
-          logger.error(`Erro ao sincronizar assinatura ${subscription.subscriber_code}:`, error);
+          logger.error(`Erro ao sincronizar assinatura ${subscription.subscriberCode}:`, error);
           errorCount++;
         }
       }
@@ -1195,38 +1202,38 @@ export class HotmartService {
       }
 
       // Processar o evento baseado no tipo
-      const eventData = event.eventData as any;
+      const eventData = event.eventData as HotmartWebhookData['data'];
 
       switch (event.eventType) {
         case 'PURCHASE_APPROVED':
-          await this.handlePurchaseApproved(eventData.data);
+          await this.handlePurchaseApproved(eventData);
           break;
         case 'SUBSCRIPTION_CANCELLED':
-          await this.handleSubscriptionCancelled(eventData.data);
+          await this.handleSubscriptionCancelled(eventData);
           break;
         case 'SUBSCRIPTION_CHANGED':
-          await this.handleSubscriptionChanged(eventData.data);
+          await this.handleSubscriptionChanged(eventData);
           break;
         case 'SUBSCRIPTION_BILLING_DATE_UPDATED':
-          await this.handleSubscriptionBillingDateUpdated(eventData.data);
+          await this.handleSubscriptionBillingDateUpdated(eventData);
           break;
         case 'PURCHASE_CANCELLED':
-          await this.handlePurchaseCancelled(eventData.data);
+          await this.handlePurchaseCancelled(eventData);
           break;
         case 'PURCHASE_REFUNDED':
-          await this.handlePurchaseRefunded(eventData.data);
+          await this.handlePurchaseRefunded(eventData);
           break;
         case 'CHARGEBACK':
-          await this.handleChargeback(eventData.data);
+          await this.handleChargeback(eventData);
           break;
         case 'PURCHASE_EXPIRED':
-          await this.handlePurchaseExpired(eventData.data);
+          await this.handlePurchaseExpired(eventData);
           break;
         case 'PURCHASE_DELAYED':
-          await this.handlePurchaseDelayed(eventData.data);
+          await this.handlePurchaseDelayed(eventData);
           break;
         case 'CART_ABANDONED':
-          await this.handleCartAbandoned(eventData.data);
+          await this.handleCartAbandoned(eventData);
           break;
         default:
           logger.warn(`Evento não tratado: ${event.eventType}`);
