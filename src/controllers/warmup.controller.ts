@@ -111,57 +111,6 @@ export const configureWarmup = async (
         videoChance: config.config.videoChance || 0.1,
         minDelay: config.config.minDelay || 3000,
         maxDelay: config.config.maxDelay || 90000,
-        // Novas configurações para grupos e números externos
-        groupChance: config.config.groupChance || 0.3, // 30% chance de enviar para grupo
-        externalNumbersChance:
-          config.config.externalNumbersChance || 0.4, // 40% chance de usar números externos
-        groupId: config.config.groupId || '120363419940617369@g.us', // ID do grupo padrão
-        externalNumbers: config.config.externalNumbers || [], // Lista de números externos (opcional)
-        // Novas configurações avançadas
-        documentChance: config.config.documentChance || 0.03,
-        locationChance: config.config.locationChance || 0.02,
-        contactChance: config.config.contactChance || 0.02,
-        pollChance: config.config.pollChance || 0.02,
-        // Configurações de comportamento humano
-        typingSimulation: config.config.typingSimulation || true,
-        onlineStatusSimulation:
-          config.config.onlineStatusSimulation || true,
-        readReceiptSimulation:
-          config.config.readReceiptSimulation || true,
-        // Configurações de horário
-        activeHours: config.config.activeHours || {
-          start: 8,
-          end: 22,
-        },
-        weekendBehavior: config.config.weekendBehavior || 'normal',
-        // Configurações de resposta
-        autoReplyChance: config.config.autoReplyChance || 0.3,
-        replyDelay: config.config.replyDelay || {
-          min: 2000,
-          max: 10000,
-        },
-        // Configurações de status
-        statusUpdateChance: config.config.statusUpdateChance || 0.1,
-        statusTexts: config.config.statusTexts || [],
-        // Configurações de perfil
-        profileUpdateChance:
-          config.config.profileUpdateChance || 0.05,
-        profileNames: config.config.profileNames || [],
-        profileBios: config.config.profileBios || [],
-        // Configurações de grupo
-        groupJoinChance: config.config.groupJoinChance || 0.02,
-        groupLeaveChance: config.config.groupLeaveChance || 0.01,
-        groupInviteChance: config.config.groupInviteChance || 0.01,
-        // Configurações de mídia
-        mediaDownloadChance: config.config.mediaDownloadChance || 0.5,
-        mediaForwardChance: config.config.mediaForwardChance || 0.2,
-        // Configurações de segurança
-        antiDetectionMode: config.config.antiDetectionMode || false,
-        randomDeviceInfo: config.config.randomDeviceInfo || false,
-        // Configurações de qualidade
-        messageQuality: config.config.messageQuality || 'medium',
-        engagementOptimization:
-          config.config.engagementOptimization || true,
       },
     };
 

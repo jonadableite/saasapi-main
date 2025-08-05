@@ -10,6 +10,7 @@ import setupMinioBucket from './config/setupMinio';
 import specs from './config/swagger';
 import { handleWebhook } from './controllers/stripe.controller';
 import { createUsersController } from './controllers/user.controller';
+import { initializeHotmartJobs } from './jobs/hotmart-sync.job';
 import { schedulePaymentReminders } from './jobs/payment-reminder.job';
 import { updatePaymentStatuses } from './jobs/updatePaymentStatuses';
 import { prisma } from './lib/prisma';
@@ -26,6 +27,7 @@ import { companyRoutes } from './routes/company.routes';
 import dashboardRoutes from './routes/dashboard.routes';
 import dashboardsRoutes from './routes/dashboards.routes';
 import grupoRoutes from './routes/grupo.routes';
+import hotmartRoutes from './routes/hotmart.routes';
 import instanceRoutes from './routes/instance.routes';
 import leadRoutes from './routes/lead.routes';
 import messageLogRoutes from './routes/message-log.routes';
@@ -126,8 +128,10 @@ const protectedRoutes = [
   { path: '/api/message-logs', route: messageLogRoutes },
   { path: '/api/groups', route: grupoRoutes },
   { path: '/api/metadata-cleaner', route: metadataCleanerRoutes },
+  { path: '/api/hotmart', route: hotmartRoutes },
 ];
 
+// biome-ignore lint/complexity/noForEach: <explanation>
 protectedRoutes.forEach(({ path, route }) => {
   app.use(path, route);
   serverLogger.log(`Rota protegida registrada: ${path}`);
@@ -156,6 +160,10 @@ try {
   // Agende os lembretes de pagamento
   schedulePaymentReminders();
   serverLogger.log('Lembretes de pagamento agendados');
+
+  // Inicializar jobs do Hotmart
+  initializeHotmartJobs();
+  serverLogger.log('Jobs do Hotmart inicializados');
 } catch (error) {
   serverLogger.error('Erro ao configurar cron jobs', error);
 }

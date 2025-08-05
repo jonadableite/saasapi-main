@@ -40,10 +40,10 @@ model Company {
 }
 
 model User {
-  id                       String         @id @default(uuid())
+  id                       String            @id @default(uuid())
   evoAiUserId              String? // ID do usuário na Evo AI
   client_Id                String? // ID do cliente na Evo AI
-  email                    String         @unique
+  email                    String            @unique
   name                     String
   password                 String
   image                    String?
@@ -52,32 +52,34 @@ model User {
   stripeCustomerId         String?
   stripeSubscriptionId     String?
   stripeSubscriptionStatus String?
-  active                   Boolean?       @default(true)
-  createdAt                DateTime       @default(now())
-  updatedAt                DateTime       @updatedAt
+  active                   Boolean?          @default(true)
+  createdAt                DateTime          @default(now())
+  updatedAt                DateTime          @updatedAt
   whatleadCompanyId        String
-  plan                     String         @default("free")
-  status                   Boolean        @default(true)
-  maxInstances             Int            @default(2)
-  messagesPerDay           Int            @default(20)
-  features                 String[]       @default([])
-  support                  String         @default("basic")
+  plan                     String            @default("free")
+  status                   Boolean           @default(true)
+  maxInstances             Int               @default(2)
+  messagesPerDay           Int               @default(20)
+  features                 String[]          @default([])
+  support                  String            @default("basic")
   trialEndDate             DateTime?
   instances                Instance[]
   payments                 Payment[]
   warmupStats              WarmupStats[]
   Campaign                 Campaign[]
-  company                  Company        @relation(fields: [whatleadCompanyId], references: [id])
+  company                  Company           @relation(fields: [whatleadCompanyId], references: [id])
   CampaignLead             CampaignLead[]
   referredBy               String?
-  affiliate                User?          @relation("AffiliateReferral", fields: [referredBy], references: [id])
-  role                     String         @default("user") // Valores: "admin", "affiliate", "manager", "user"
+  affiliate                User?             @relation("AffiliateReferral", fields: [referredBy], references: [id])
+  role                     String            @default("user") // Valores: "admin", "affiliate", "manager", "user"
   // Relação para o campo affiliate
-  affiliates               User[]         @relation("AffiliateReferral")
+  affiliates               User[]            @relation("AffiliateReferral")
   Message                  Message[]
   Conversation             Conversation[]
   contacts                 Contact[]
   contactNotes             ContactNote[]
+  hotmartCustomers         HotmartCustomer[] // Relacionamento com clientes Hotmart
+  MessageReaction          MessageReaction[]
 
   @@index([email, profile, phone, createdAt(sort: Desc)])
   @@map("whatlead_users")
@@ -523,23 +525,24 @@ model Conversation {
 }
 
 model Message {
-  id             String              @id @default(uuid())
-  conversationId String
-  conversation   Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  messageId      String              @unique
-  content        String
-  type           String              @default("text") // text, image, audio, video, document
-  sender         String // fromMe ou contact phone
-  status         MessageStatus       @default(PENDING)
-  timestamp      DateTime
-  mediaUrl       String?
-  mediaType      String?
-  replyTo        Json?
-  userId         String
-  user           User                @relation(fields: [userId], references: [id])
-  failureReason  String?
-  createdAt      DateTime            @default(now())
-  attachments    MessageAttachment[]
+  id              String              @id @default(uuid())
+  conversationId  String
+  conversation    Conversation        @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  messageId       String              @unique
+  content         String
+  type            String              @default("text") // text, image, audio, video, document
+  sender          String // fromMe ou contact phone
+  status          MessageStatus       @default(PENDING)
+  timestamp       DateTime
+  mediaUrl        String?
+  mediaType       String?
+  replyTo         Json?
+  userId          String
+  user            User                @relation(fields: [userId], references: [id])
+  failureReason   String?
+  createdAt       DateTime            @default(now())
+  attachments     MessageAttachment[]
+  MessageReaction MessageReaction[]
 
   @@index([conversationId, timestamp])
   @@index([userId, timestamp])
@@ -581,14 +584,238 @@ model ContactNote {
 }
 
 model MessageReaction {
-  id             String       @id @default(uuid())
-  messageId      String
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  reaction       String // emoji usado como reação
-  userId         String // ID do usuário que reagiu
-  createdAt      DateTime     @default(now())
+  id        String   @id @default(uuid())
+  messageId String
+  userId    String
+  reaction  String // emoji ou tipo de reação
+  createdAt DateTime @default(now())
 
-  @@index([messageId])
-  @@index([conversationId])
+  message        Message       @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  Conversation   Conversation? @relation(fields: [conversationId], references: [id])
+  conversationId String?
+
+  @@unique([messageId, userId])
+  @@map("message_reactions")
+}
+
+// Sistema de Gerenciamento de Clientes Hotmart
+model HotmartCustomer {
+  id                      String    @id @default(uuid())
+  subscriberCode          String    @unique // Código único do assinante na Hotmart
+  transaction             String? // ID da transação
+  productId               String // ID do produto na Hotmart
+  productName             String // Nome do produto
+  customerName            String // Nome do cliente
+  customerEmail           String // Email do cliente
+  customerPhone           String? // Telefone do cliente
+  customerDocument        String? // CPF/CNPJ do cliente
+  customerCountry         String? // País do cliente
+  customerCity            String? // Cidade do cliente
+  customerState           String? // Estado do cliente
+  customerZipCode         String? // CEP do cliente
+  customerAddress         String? // Endereço do cliente
+  customerNumber          String? // Número do endereço
+  customerComplement      String? // Complemento do endereço
+  customerNeighborhood    String? // Bairro do cliente
+  paymentType             String? // Tipo de pagamento (CREDITCARD, PIX, BOLETO, etc.)
+  paymentMethod           String? // Método de pagamento
+  paymentStatus           String // Status do pagamento
+  subscriptionStatus      String // Status da assinatura
+  subscriptionValue       Decimal   @db.Decimal(10, 2) // Valor da assinatura
+  subscriptionCurrency    String    @default("BRL") // Moeda da assinatura
+  subscriptionFrequency   String? // Frequência da assinatura (MONTHLY, YEARLY, etc.)
+  subscriptionStartDate   DateTime? // Data de início da assinatura
+  subscriptionEndDate     DateTime? // Data de término da assinatura
+  nextChargeDate          DateTime? // Próxima data de cobrança
+  cancelationDate         DateTime? // Data de cancelamento
+  cancelationReason       String? // Motivo do cancelamento
+  affiliateCode           String? // Código do afiliado
+  affiliateName           String? // Nome do afiliado
+  producerCode            String? // Código do produtor
+  producerName            String? // Nome do produtor
+  hotmartUserId           String? // ID do usuário na Hotmart
+  hotmartUserEmail        String? // Email do usuário na Hotmart
+  hotmartUserName         String? // Nome do usuário na Hotmart
+  hotmartUserPhone        String? // Telefone do usuário na Hotmart
+  hotmartUserDocument     String? // Documento do usuário na Hotmart
+  hotmartUserCountry      String? // País do usuário na Hotmart
+  hotmartUserCity         String? // Cidade do usuário na Hotmart
+  hotmartUserState        String? // Estado do usuário na Hotmart
+  hotmartUserZipCode      String? // CEP do usuário na Hotmart
+  hotmartUserAddress      String? // Endereço do usuário na Hotmart
+  hotmartUserNumber       String? // Número do endereço do usuário
+  hotmartUserComplement   String? // Complemento do endereço do usuário
+  hotmartUserNeighborhood String? // Bairro do usuário
+  isActive                Boolean   @default(true) // Se o cliente está ativo
+  isTrial                 Boolean   @default(false) // Se está em período de teste
+  trialEndDate            DateTime? // Data de fim do período de teste
+  lastLoginDate           DateTime? // Última data de login
+  lastActivityDate        DateTime? // Última data de atividade
+  notes                   String? // Observações sobre o cliente
+  tags                    String[]  @default([]) // Tags para segmentação
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  // Relacionamentos
+  hotmartEvents       HotmartEvent[]
+  hotmartTransactions HotmartTransaction[]
+  whatleadUser        User?                @relation(fields: [whatleadUserId], references: [id])
+  whatleadUserId      String? // ID do usuário no sistema Whatlead
+  HotmartProduct      HotmartProduct?      @relation(fields: [hotmartProductId], references: [id])
+  hotmartProductId    String?
+
+  @@index([subscriberCode])
+  @@index([customerEmail])
+  @@index([subscriptionStatus])
+  @@index([paymentStatus])
+  @@index([nextChargeDate])
+  @@index([createdAt(sort: Desc)])
+  @@map("hotmart_customers")
+}
+
+model HotmartEvent {
+  id             String    @id @default(uuid())
+  eventType      String // Tipo do evento (PURCHASE_APPROVED, SUBSCRIPTION_CANCELLED, etc.)
+  eventData      Json // Dados completos do evento
+  eventDate      DateTime // Data do evento
+  transaction    String? // ID da transação
+  subscriberCode String? // Código do assinante
+  productId      String? // ID do produto
+  status         String // Status do processamento
+  processedAt    DateTime? // Data de processamento
+  errorMessage   String? // Mensagem de erro se houver
+  retryCount     Int       @default(0) // Contador de tentativas
+  maxRetries     Int       @default(3) // Máximo de tentativas
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  // Relacionamentos
+  customer   HotmartCustomer? @relation(fields: [customerId], references: [id])
+  customerId String?
+
+  @@index([eventType])
+  @@index([eventDate(sort: Desc)])
+  @@index([status])
+  @@index([transaction])
+  @@index([subscriberCode])
+  @@map("hotmart_events")
+}
+
+model HotmartTransaction {
+  id                   String    @id @default(uuid())
+  transactionId        String    @unique // ID único da transação
+  subscriberCode       String // Código do assinante
+  productId            String // ID do produto
+  transactionType      String // Tipo da transação
+  transactionStatus    String // Status da transação
+  transactionValue     Decimal   @db.Decimal(10, 2) // Valor da transação
+  transactionCurrency  String    @default("BRL") // Moeda da transação
+  paymentType          String? // Tipo de pagamento
+  paymentMethod        String? // Método de pagamento
+  paymentStatus        String // Status do pagamento
+  paymentDate          DateTime? // Data do pagamento
+  dueDate              DateTime? // Data de vencimento
+  refundDate           DateTime? // Data de reembolso
+  refundValue          Decimal?  @db.Decimal(10, 2) // Valor do reembolso
+  refundReason         String? // Motivo do reembolso
+  chargebackDate       DateTime? // Data do chargeback
+  chargebackValue      Decimal?  @db.Decimal(10, 2) // Valor do chargeback
+  chargebackReason     String? // Motivo do chargeback
+  installmentNumber    Int? // Número da parcela
+  totalInstallments    Int? // Total de parcelas
+  affiliateCode        String? // Código do afiliado
+  affiliateName        String? // Nome do afiliado
+  commissionValue      Decimal?  @db.Decimal(10, 2) // Valor da comissão
+  commissionPercentage Decimal?  @db.Decimal(5, 2) // Percentual da comissão
+  producerCode         String? // Código do produtor
+  producerName         String? // Nome do produtor
+  producerValue        Decimal?  @db.Decimal(10, 2) // Valor do produtor
+  producerPercentage   Decimal?  @db.Decimal(5, 2) // Percentual do produtor
+  platformValue        Decimal?  @db.Decimal(10, 2) // Valor da plataforma
+  platformPercentage   Decimal?  @db.Decimal(5, 2) // Percentual da plataforma
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  // Relacionamentos
+  customer   HotmartCustomer @relation(fields: [customerId], references: [id])
+  customerId String
+
+  @@index([transactionId])
+  @@index([subscriberCode])
+  @@index([transactionStatus])
+  @@index([paymentStatus])
+  @@index([paymentDate(sort: Desc)])
+  @@map("hotmart_transactions")
+}
+
+model HotmartProduct {
+  id                    String   @id @default(uuid())
+  productId             String   @unique // ID do produto na Hotmart
+  productName           String // Nome do produto
+  productType           String // Tipo do produto (SUBSCRIPTION, ONE_TIME, etc.)
+  productCategory       String? // Categoria do produto
+  productSubcategory    String? // Subcategoria do produto
+  productDescription    String? // Descrição do produto
+  productPrice          Decimal  @db.Decimal(10, 2) // Preço do produto
+  productCurrency       String   @default("BRL") // Moeda do produto
+  productStatus         String // Status do produto
+  productUrl            String? // URL do produto
+  productImage          String? // URL da imagem do produto
+  productVideo          String? // URL do vídeo do produto
+  productDocuments      String[] @default([]) // URLs dos documentos do produto
+  productTags           String[] @default([]) // Tags do produto
+  producerCode          String? // Código do produtor
+  producerName          String? // Nome do produtor
+  producerEmail         String? // Email do produtor
+  producerPhone         String? // Telefone do produtor
+  affiliateEnabled      Boolean  @default(true) // Se permite afiliados
+  commissionPercentage  Decimal? @db.Decimal(5, 2) // Percentual de comissão padrão
+  trialEnabled          Boolean  @default(false) // Se permite período de teste
+  trialDays             Int? // Dias de teste
+  trialPrice            Decimal? @db.Decimal(10, 2) // Preço do teste
+  subscriptionEnabled   Boolean  @default(false) // Se permite assinatura
+  subscriptionFrequency String? // Frequência da assinatura
+  subscriptionPrice     Decimal? @db.Decimal(10, 2) // Preço da assinatura
+  subscriptionCycles    Int? // Ciclos da assinatura (null = ilimitado)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  // Relacionamentos
+  customers HotmartCustomer[]
+
+  @@index([productId])
+  @@index([productStatus])
+  @@index([producerCode])
+  @@map("hotmart_products")
+}
+
+model HotmartAnalytics {
+  id                     String   @id @default(uuid())
+  date                   DateTime @db.Date // Data da análise
+  productId              String? // ID do produto (null = todos)
+  metricType             String // Tipo da métrica
+  metricValue            Decimal  @db.Decimal(15, 2) // Valor da métrica
+  metricUnit             String? // Unidade da métrica
+  metricDescription      String? // Descrição da métrica
+  activeSubscriptions    Int      @default(0) // Assinaturas ativas
+  cancelledSubscriptions Int      @default(0) // Assinaturas canceladas
+  delayedSubscriptions   Int      @default(0) // Assinaturas atrasadas
+  newSubscriptions       Int      @default(0) // Novas assinaturas
+  totalRevenue           Decimal  @default(0) @db.Decimal(15, 2) // Receita total
+  refundedRevenue        Decimal  @default(0) @db.Decimal(15, 2) // Receita reembolsada
+  chargebackRevenue      Decimal  @default(0) @db.Decimal(15, 2) // Receita com chargeback
+  netRevenue             Decimal  @default(0) @db.Decimal(15, 2) // Receita líquida
+  churnRate              Decimal  @default(0) @db.Decimal(5, 4) // Taxa de churn
+  ltv                    Decimal  @default(0) @db.Decimal(15, 2) // Lifetime Value
+  mrr                    Decimal  @default(0) @db.Decimal(15, 2) // Monthly Recurring Revenue
+  arr                    Decimal  @default(0) @db.Decimal(15, 2) // Annual Recurring Revenue
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  @@unique([date, productId, metricType])
+  @@index([date(sort: Desc)])
+  @@index([productId])
+  @@index([metricType])
+  @@map("hotmart_analytics")
 }

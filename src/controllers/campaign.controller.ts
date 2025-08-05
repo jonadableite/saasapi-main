@@ -138,12 +138,12 @@ export default class CampaignController {
             latestDispatch?.instance?.connectionStatus,
           statistics: campaign.statistics
             ? {
-                totalLeads: campaign.statistics.totalLeads,
-                sentCount: campaign.statistics.sentCount,
-                deliveredCount: campaign.statistics.deliveredCount,
-                readCount: campaign.statistics.readCount,
-                failedCount: campaign.statistics.failedCount,
-              }
+              totalLeads: campaign.statistics.totalLeads,
+              sentCount: campaign.statistics.sentCount,
+              deliveredCount: campaign.statistics.deliveredCount,
+              readCount: campaign.statistics.readCount,
+              failedCount: campaign.statistics.failedCount,
+            }
             : null,
           createdAt: campaign.createdAt,
           updatedAt: campaign.updatedAt,
@@ -960,12 +960,12 @@ export default class CampaignController {
         message: message || '',
         media: media
           ? {
-              type: media.type,
-              media: media.base64,
-              fileName: media.fileName,
-              mimetype: media.mimetype,
-              caption: media.caption,
-            }
+            type: media.type,
+            media: media.base64,
+            fileName: media.fileName,
+            mimetype: media.mimetype,
+            caption: media.caption,
+          }
           : undefined,
         minDelay: Number(minDelay) || 5,
         maxDelay: Number(maxDelay) || 30,
@@ -1236,12 +1236,7 @@ export default class CampaignController {
   ): Promise<void> {
     try {
       const { id: campaignId } = req.params;
-      const {
-        instanceIds,
-        useRotation,
-        rotationStrategy,
-        maxMessagesPerInstance,
-      } = req.body;
+      const { instanceIds, useRotation, rotationStrategy, maxMessagesPerInstance } = req.body;
 
       campaignLogger.info('🔄 Adicionando instâncias para rotação', {
         campaignId,
@@ -1261,13 +1256,10 @@ export default class CampaignController {
         },
       );
 
-      campaignLogger.success(
-        '✅ Instâncias adicionadas com sucesso',
-        {
-          campaignId,
-          instanceCount: instanceIds.length,
-        },
-      );
+      campaignLogger.success('✅ Instâncias adicionadas com sucesso', {
+        campaignId,
+        instanceCount: instanceIds.length,
+      });
 
       res.json({
         success: true,
@@ -1275,20 +1267,14 @@ export default class CampaignController {
       });
     } catch (error) {
       campaignLogger.error('❌ Erro ao adicionar instâncias', {
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Erro desconhecido',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
         campaignId: req.params.id,
       });
 
       res.status(500).json({
         success: false,
         message: 'Erro ao adicionar instâncias',
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Erro desconhecido',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
       });
     }
   }
@@ -1329,20 +1315,14 @@ export default class CampaignController {
       });
     } catch (error) {
       campaignLogger.error('❌ Erro ao remover instâncias', {
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Erro desconhecido',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
         campaignId: req.params.id,
       });
 
       res.status(500).json({
         success: false,
         message: 'Erro ao remover instâncias',
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Erro desconhecido',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
       });
     }
   }
@@ -1361,10 +1341,7 @@ export default class CampaignController {
         campaignId,
       });
 
-      const stats =
-        await instanceRotationService.getCampaignInstanceStats(
-          campaignId,
-        );
+      const stats = await instanceRotationService.getCampaignInstanceStats(campaignId);
 
       campaignLogger.success('✅ Estatísticas obtidas com sucesso', {
         campaignId,
@@ -1377,20 +1354,14 @@ export default class CampaignController {
       });
     } catch (error) {
       campaignLogger.error('❌ Erro ao obter estatísticas', {
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Erro desconhecido',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
         campaignId: req.params.id,
       });
 
       res.status(500).json({
         success: false,
         message: 'Erro ao obter estatísticas',
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Erro desconhecido',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
       });
     }
   }
@@ -1409,9 +1380,7 @@ export default class CampaignController {
         campaignId,
       });
 
-      await instanceRotationService.resetCampaignInstanceCounters(
-        campaignId,
-      );
+      await instanceRotationService.resetCampaignInstanceCounters(campaignId);
 
       campaignLogger.success('✅ Contadores resetados com sucesso', {
         campaignId,
@@ -1423,20 +1392,14 @@ export default class CampaignController {
       });
     } catch (error) {
       campaignLogger.error('❌ Erro ao resetar contadores', {
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Erro desconhecido',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
         campaignId: req.params.id,
       });
 
       res.status(500).json({
         success: false,
         message: 'Erro ao resetar contadores',
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Erro desconhecido',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
       });
     }
   }
@@ -1469,27 +1432,19 @@ export default class CampaignController {
         isActive,
       );
 
-      campaignLogger.success(
-        '✅ Status da instância alterado com sucesso',
-        {
-          campaignId,
-          instanceId,
-          isActive,
-        },
-      );
+      campaignLogger.success('✅ Status da instância alterado com sucesso', {
+        campaignId,
+        instanceId,
+        isActive,
+      });
 
       res.json({
         success: true,
-        message: `Instância ${
-          isActive ? 'ativada' : 'desativada'
-        } com sucesso`,
+        message: `Instância ${isActive ? 'ativada' : 'desativada'} com sucesso`,
       });
     } catch (error) {
       campaignLogger.error('❌ Erro ao alterar status da instância', {
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Erro desconhecido',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
         campaignId: req.params.id,
         instanceId: req.body.instanceId,
       });
@@ -1497,10 +1452,7 @@ export default class CampaignController {
       res.status(500).json({
         success: false,
         message: 'Erro ao alterar status da instância',
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Erro desconhecido',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
       });
     }
   }
@@ -1526,22 +1478,12 @@ export default class CampaignController {
       const instances = await prisma.instance.findMany({
         where: {
           userId,
-          connectionStatus: {
-            in: ['CONNECTED', 'OPEN'],
-          },
+          connectionStatus: 'CONNECTED',
         },
         select: {
           id: true,
           instanceName: true,
           connectionStatus: true,
-          profileName: true,
-          warmupStats: {
-            select: {
-              warmupTime: true,
-              status: true,
-              createdAt: true,
-            },
-          },
           createdAt: true,
           updatedAt: true,
         },
@@ -1561,20 +1503,14 @@ export default class CampaignController {
       });
     } catch (error) {
       campaignLogger.error('❌ Erro ao listar instâncias', {
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Erro desconhecido',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
         userId: req.user?.id,
       });
 
       res.status(500).json({
         success: false,
         message: 'Erro ao listar instâncias',
-        error:
-          error instanceof Error
-            ? error.message
-            : 'Erro desconhecido',
+        error: error instanceof Error ? error.message : 'Erro desconhecido',
       });
     }
   }
@@ -1584,5 +1520,6 @@ export type {
   BaseCampaignRequest,
   CampaignRequestWithId,
   CreateCampaignRequest,
-  StartCampaignRequest,
+  StartCampaignRequest
 };
+
