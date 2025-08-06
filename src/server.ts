@@ -133,6 +133,7 @@ const protectedRoutes = [
   { path: '/api/groups', route: grupoRoutes },
   { path: '/api/metadata-cleaner', route: metadataCleanerRoutes },
   { path: '/api/hotmart', route: hotmartRoutes },
+  { path: '/api/auto-account', route: autoAccountRoutes },
 ];
 
 // biome-ignore lint/complexity/noForEach: <explanation>

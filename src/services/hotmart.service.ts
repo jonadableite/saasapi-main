@@ -3,6 +3,7 @@ import type { Prisma } from '@prisma/client';
 import { PrismaClient } from '@prisma/client';
 import axios from 'axios';
 import { logger } from '../utils/logger';
+import { autoAccountService, type PaymentConfirmationData } from './auto-account.service';
 import { welcomeService } from './welcome.service';
 
 const prisma = new PrismaClient();
@@ -425,13 +426,13 @@ export class HotmartService {
 
         // Enriquecer dados do cliente via API
         await this.enrichCustomerData(customer.id, data.subscriberCode);
-
-        // Enviar boas-vindas
-        await this.sendWelcomeMessage(customer);
       }
 
       // Registrar transação
       await this.registerTransaction(data, customer.id);
+
+      // Criar conta automaticamente no sistema Whatlead
+      await this.createWhatleadAccount(customer);
 
       logger.info('Compra aprovada processada com sucesso');
     } catch (error) {
@@ -820,15 +821,31 @@ export class HotmartService {
    */
   private async sendWelcomeMessage(customer: any) {
     try {
+      logger.info('Processando criação de conta para cliente Hotmart:', customer.customerEmail);
+
       // Verificar se já existe um usuário no sistema Whatlead
       let whatleadUser = await prisma.user.findUnique({
         where: { email: customer.customerEmail },
       });
 
       if (!whatleadUser) {
-        // Criar usuário no sistema Whatlead
+        logger.info('Criando nova conta para cliente Hotmart:', customer.customerName);
+
+        // Criar hash da senha (email como senha inicial)
         const hashedPassword = await require('bcrypt').hash(customer.customerEmail, 10);
 
+        // Criar empresa para o usuário
+        const company = await prisma.company.create({
+          data: {
+            name: `${customer.customerName}'s Company`,
+            active: true,
+          },
+        });
+
+        // Determinar plano baseado no valor da assinatura
+        const plan = this.determinePlanFromValue(customer.subscriptionValue);
+
+        // Criar usuário no sistema Whatlead
         whatleadUser = await prisma.user.create({
           data: {
             name: customer.customerName,
@@ -836,16 +853,49 @@ export class HotmartService {
             password: hashedPassword,
             phone: customer.customerPhone || '',
             profile: 'user',
-            plan: 'pro', // Plano padrão para clientes Hotmart
-            whatleadCompanyId: 'default-company-id', // Ajustar conforme necessário
+            plan: plan,
+            whatleadCompanyId: company.id,
             role: 'user',
+            // Configurar limites baseados no plano
+            maxInstances: this.getPlanLimits(plan).maxInstances,
+            messagesPerDay: this.getPlanLimits(plan).messagesPerDay,
+            features: this.getPlanLimits(plan).features,
+            support: this.getPlanLimits(plan).support,
+            // Configurar período trial se necessário
+            trialEndDate: customer.isTrial ? customer.trialEndDate : null,
+            // Status ativo
+            active: true,
+            status: true,
           },
+        });
+
+        logger.info('Usuário criado com sucesso:', {
+          userId: whatleadUser.id,
+          email: whatleadUser.email,
+          plan: whatleadUser.plan,
+          companyId: company.id,
         });
 
         // Atualizar cliente Hotmart com o ID do usuário Whatlead
         await prisma.hotmartCustomer.update({
           where: { id: customer.id },
-          data: { whatleadUserId: whatleadUser.id },
+          data: {
+            whatleadUserId: whatleadUser.id,
+            lastActivityDate: new Date(),
+          },
+        });
+
+        logger.info('Cliente Hotmart atualizado com ID do usuário Whatlead');
+      } else {
+        logger.info('Usuário já existe no sistema:', whatleadUser.email);
+
+        // Atualizar cliente Hotmart com o ID do usuário existente
+        await prisma.hotmartCustomer.update({
+          where: { id: customer.id },
+          data: {
+            whatleadUserId: whatleadUser.id,
+            lastActivityDate: new Date(),
+          },
         });
       }
 
@@ -858,11 +908,55 @@ export class HotmartService {
         phone: customer.customerPhone,
       });
 
-      logger.info('Mensagem de boas-vindas enviada com sucesso');
+      logger.info('Mensagem de boas-vindas enviada com sucesso para:', customer.customerEmail);
     } catch (error) {
-      logger.error('Erro ao enviar mensagem de boas-vindas:', error);
+      logger.error('Erro ao processar criação de conta e envio de boas-vindas:', error);
       // Não lançar erro para não interromper o fluxo principal
     }
+  }
+
+  /**
+   * Determina o plano baseado no valor da assinatura
+   */
+  private determinePlanFromValue(value: number): string {
+    if (value >= 299) return 'scale';
+    if (value >= 97) return 'pro';
+    if (value >= 49) return 'basic';
+    return 'free';
+  }
+
+  /**
+   * Retorna os limites do plano
+   */
+  private getPlanLimits(plan: string) {
+    const limits = {
+      free: {
+        maxInstances: 1,
+        messagesPerDay: 20,
+        features: ['TEXT'],
+        support: 'basic',
+      },
+      basic: {
+        maxInstances: 2,
+        messagesPerDay: 50,
+        features: ['TEXT', 'IMAGE'],
+        support: 'basic',
+      },
+      pro: {
+        maxInstances: 5,
+        messagesPerDay: 100,
+        features: ['TEXT', 'IMAGE', 'VIDEO', 'AUDIO'],
+        support: 'priority',
+      },
+      scale: {
+        maxInstances: 15,
+        messagesPerDay: 500,
+        features: ['TEXT', 'IMAGE', 'VIDEO', 'AUDIO', 'STICKER'],
+        support: 'premium',
+      },
+    };
+
+    return limits[plan as keyof typeof limits] || limits.free;
   }
 
   /**
@@ -1764,6 +1858,32 @@ export class HotmartService {
       : 0;
 
     return summary;
+  }
+
+  /**
+   * Cria conta no sistema Whatlead para cliente Hotmart
+   */
+  private async createWhatleadAccount(customer: any) {
+    try {
+      const paymentData: PaymentConfirmationData = {
+        customerEmail: customer.customerEmail,
+        customerName: customer.customerName,
+        customerPhone: customer.customerPhone,
+        paymentValue: Number(customer.subscriptionValue),
+        paymentStatus: customer.paymentStatus,
+        subscriptionStatus: customer.subscriptionStatus,
+        productId: customer.productId,
+        productName: customer.productName,
+        transactionId: customer.transaction,
+        subscriberCode: customer.subscriberCode,
+        source: 'hotmart',
+      };
+
+      await autoAccountService.createAccountFromPayment(paymentData);
+    } catch (error) {
+      logger.error('Erro ao criar conta Whatlead para cliente Hotmart:', error);
+      // Não lançar erro para não interromper o fluxo principal
+    }
   }
 }
 
