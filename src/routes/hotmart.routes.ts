@@ -6,9 +6,6 @@ import { checkRole } from '../middlewares/roleCheck';
 
 const router = Router();
 
-// Rotas públicas (webhooks)
-router.post('/webhook/user', hotmartController.handleWebhook);
-
 // Rotas protegidas (requerem autenticação)
 router.use(authMiddleware);
 

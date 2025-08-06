@@ -8,6 +8,7 @@ import cron from 'node-cron';
 import swaggerUi from 'swagger-ui-express';
 import setupMinioBucket from './config/setupMinio';
 import specs from './config/swagger';
+import { hotmartController } from './controllers/hotmart.controller';
 import { handleWebhook } from './controllers/stripe.controller';
 import { createUsersController } from './controllers/user.controller';
 import { initializeHotmartJobs } from './jobs/hotmart-sync.job';
@@ -101,6 +102,9 @@ app.use('/webhook', webhookRoutes);
 app.use('/api/session', sessionRoutes);
 app.use('/api/password', passwordRoutes);
 app.use('/api/users/register', createUsersController);
+
+// Webhook da Hotmart (público)
+app.post('/api/hotmart/webhook/user', hotmartController.handleWebhook);
 
 // Middleware de autenticação para todas as rotas protegidas
 app.use('/api', authMiddleware);

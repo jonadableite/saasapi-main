@@ -257,8 +257,11 @@ export class HotmartService {
   async processWebhook(webhookData: HotmartWebhookData, hottok: string): Promise<HotmartApiResponse> {
     try {
       // Validar hottok
-      if (hottok !== process.env.HOTMART_WEBHOOK_TOKEN) {
+      const expectedHottok = process.env.HOTMART_WEBHOOK_TOKEN || process.env.HOTMART_WEBHOOK_TOKENHOTMART_WEBHOOK_TOKEN;
+      if (hottok !== expectedHottok) {
         logger.error('Hottok inválido recebido no webhook');
+        logger.error(`Esperado: ${expectedHottok}`);
+        logger.error(`Recebido: ${hottok}`);
         throw new Error('Hottok inválido');
       }
 
