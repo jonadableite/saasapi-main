@@ -17,6 +17,7 @@ const isWebhookRoute = (path: string): boolean => {
   const webhookPaths = [
     "/webhook/evolution-global",
     "/webhook/evolution-webhook",
+    "/api/hotmart/webhook/user",
   ];
   return webhookPaths.some((webhookPath) => path.includes(webhookPath));
 };
@@ -101,9 +102,9 @@ export const authMiddleware = async (
         maxInstances: user.maxInstances,
         company: user.company
           ? {
-              id: user.company.id,
-              name: user.company.name,
-            }
+            id: user.company.id,
+            name: user.company.name,
+          }
           : undefined,
       };
 
