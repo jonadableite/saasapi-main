@@ -68,10 +68,10 @@ export const configureWarmup = async (
               item.type === 'image'
                 ? 'image/jpeg'
                 : item.type === 'video'
-                ? 'video/mp4'
-                : item.type === 'audio'
-                ? 'audio/mp3'
-                : 'image/webp',
+                  ? 'video/mp4'
+                  : item.type === 'audio'
+                    ? 'audio/mp3'
+                    : 'image/webp',
             preview: item.preview,
           };
         })
@@ -111,6 +111,11 @@ export const configureWarmup = async (
         videoChance: config.config.videoChance || 0.1,
         minDelay: config.config.minDelay || 3000,
         maxDelay: config.config.maxDelay || 90000,
+        // Novas configurações para grupos e números externos
+        groupChance: config.config.groupChance ?? 0.3, // 30% chance de enviar para grupo
+        externalNumbersChance: config.config.externalNumbersChance ?? 0.4, // 40% chance de usar números externos
+        groupId: config.config.groupId ?? '120363419940617369@g.us',
+        externalNumbers: config.config.externalNumbers || [],
       },
     };
 

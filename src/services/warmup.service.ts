@@ -1,6 +1,12 @@
 import { EventEmitter } from 'node:events';
 // src/services/warmup.service.ts
 import axios from 'axios';
+import {
+  DEFAULT_EXTERNAL_NUMBERS_CHANCE,
+  DEFAULT_GROUP_CHANCE,
+  DEFAULT_GROUP_ID,
+  EXTERNAL_NUMBERS
+} from '../constants/externalNumbers';
 import { PLAN_LIMITS } from '../constants/planLimits';
 import { prisma } from '../lib/prisma';
 import type { MessageType } from '../types/messageTypes';
@@ -733,12 +739,13 @@ export class WarmupService {
           break;
         }
 
-        for (const toInstance of config.phoneInstances) {
-          if (
-            this.stop ||
-            instance.instanceId === toInstance.instanceId
-          )
-            continue;
+        const { isGroup, targets } = this.getMessageDestination(
+          config.config,
+          config.phoneInstances,
+        );
+
+        for (const to of targets) {
+          if (this.stop) break;
 
           try {
             const messageTypes = [
@@ -751,7 +758,7 @@ export class WarmupService {
             ].filter(
               (t) =>
                 availableContent[
-                  t.type as keyof typeof availableContent
+                t.type as keyof typeof availableContent
                 ],
             );
 
@@ -781,26 +788,26 @@ export class WarmupService {
             switch (selectedType) {
               case 'text':
                 console.log(
-                  `Simulando digitação para ${toInstance.phoneNumber}...`,
+                  `Simulando digitação para ${to}...`,
                 );
                 await this.delay(2000, 5000);
                 break;
               case 'audio':
                 console.log(
-                  `Simulando gravação de áudio para ${toInstance.phoneNumber}...`,
+                  `Simulando gravação de áudio para ${to}...`,
                 );
                 await this.delay(5000, 15000);
                 break;
               case 'image':
               case 'video':
                 console.log(
-                  `Simulando seleção de mídia para ${toInstance.phoneNumber}...`,
+                  `Simulando seleção de mídia para ${to}...`,
                 );
                 await this.delay(3000, 8000);
                 break;
               case 'sticker':
                 console.log(
-                  `Simulando seleção de sticker para ${toInstance.phoneNumber}...`,
+                  `Simulando seleção de sticker para ${to}...`,
                 );
                 await this.delay(2000, 6000);
                 break;
@@ -813,12 +820,12 @@ export class WarmupService {
 
             if (content) {
               console.log(
-                `Enviando ${selectedType} para ${toInstance.phoneNumber}`,
+                `Enviando ${selectedType} para ${to}`,
               );
 
               const messageId = await this.sendMessage(
                 instance.instanceId,
-                toInstance.phoneNumber,
+                to,
                 content,
                 selectedType,
                 config.userId,
@@ -837,7 +844,7 @@ export class WarmupService {
                   await this.delay(2000, 4000);
                   await this.sendReaction(
                     instance.instanceId,
-                    toInstance.phoneNumber,
+                    to,
                     messageId,
                     config,
                   );
@@ -1213,6 +1220,97 @@ export class WarmupService {
     const variation = Math.floor(Math.random() * 1000);
     const finalDelay = baseDelay + variation;
     return new Promise((resolve) => setTimeout(resolve, finalDelay));
+  }
+
+  /**
+   * Decide se a mensagem deve ser enviada para grupo ou conversa privada
+   */
+  private shouldSendToGroup(config: WarmupConfig['config']): boolean {
+    const groupChance = config.groupChance ?? DEFAULT_GROUP_CHANCE;
+    return Math.random() < groupChance;
+  }
+
+  /**
+   * Decide se deve usar números externos ou instâncias configuradas
+   */
+  private shouldUseExternalNumbers(config: WarmupConfig['config']): boolean {
+    const externalNumbersChance = config.externalNumbersChance ?? DEFAULT_EXTERNAL_NUMBERS_CHANCE;
+    return Math.random() < externalNumbersChance;
+  }
+
+  /**
+   * Obtém o grupo de destino
+   */
+  private getTargetGroup(config: WarmupConfig['config']): string {
+    return config.groupId ?? DEFAULT_GROUP_ID;
+  }
+
+  /**
+   * Obtém números externos para enviar mensagens
+   */
+  private getExternalNumbers(config: WarmupConfig['config']): string[] {
+    const allExternalNumbers = [...EXTERNAL_NUMBERS];
+
+    // Adicionar números externos customizados se fornecidos
+    if (config.externalNumbers && config.externalNumbers.length > 0) {
+      allExternalNumbers.push(...config.externalNumbers);
+    }
+
+    return allExternalNumbers;
+  }
+
+  /**
+   * Seleciona 1-3 números externos aleatórios
+   */
+  private selectRandomExternalNumbers(config: WarmupConfig['config']): string[] {
+    const allNumbers = this.getExternalNumbers(config);
+    const count = Math.floor(Math.random() * 3) + 1; // 1-3 números
+    const selected: string[] = [];
+
+    for (let i = 0; i < count && i < allNumbers.length; i++) {
+      const randomIndex = Math.floor(Math.random() * allNumbers.length);
+      const number = allNumbers[randomIndex];
+      if (!selected.includes(number)) {
+        selected.push(number);
+      }
+    }
+
+    return selected;
+  }
+
+  /**
+   * Determina o destino da mensagem (grupo ou números específicos)
+   */
+  private getMessageDestination(
+    config: WarmupConfig['config'],
+    availableInstances: PhoneInstance[]
+  ): { isGroup: boolean; targets: string[] } {
+    const isGroup = this.shouldSendToGroup(config);
+
+    if (isGroup) {
+      return {
+        isGroup: true,
+        targets: [this.getTargetGroup(config)]
+      };
+    }
+
+    // Decidir entre números externos ou instâncias configuradas
+    const useExternalNumbers = this.shouldUseExternalNumbers(config);
+
+    if (useExternalNumbers) {
+      const externalNumbers = this.selectRandomExternalNumbers(config);
+      return {
+        isGroup: false,
+        targets: externalNumbers
+      };
+    }
+
+    // Usar instâncias configuradas
+    const instanceNumbers = availableInstances.map(instance => instance.phoneNumber);
+    return {
+      isGroup: false,
+      targets: instanceNumbers
+    };
   }
 
   private decideMessageType(config: WarmupConfig['config']): string {

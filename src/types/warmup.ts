@@ -32,5 +32,10 @@ export interface WarmupConfig {
     videoChance: number;
     minDelay: number;
     maxDelay: number;
+    // Novas configurações para grupos e números externos
+    groupChance?: number; // Chance de enviar para grupo (padrão: 0.3)
+    externalNumbersChance?: number; // Chance de usar números externos (padrão: 0.4)
+    groupId?: string; // ID do grupo padrão
+    externalNumbers?: string[]; // Lista opcional de números externos adicionais
   };
 }
