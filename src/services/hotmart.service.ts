@@ -326,11 +326,25 @@ export class HotmartService {
    * Registra evento no banco de dados
    */
   private async registerEvent(webhookData: HotmartWebhookData) {
+    // Validar e converter a data do evento
+    let eventDate: Date;
+    try {
+      eventDate = new Date(webhookData.eventDate);
+      // Verificar se a data é válida
+      if (isNaN(eventDate.getTime())) {
+        logger.warn('Data do evento inválida, usando data atual:', webhookData.eventDate);
+        eventDate = new Date();
+      }
+    } catch (error) {
+      logger.warn('Erro ao converter data do evento, usando data atual:', webhookData.eventDate);
+      eventDate = new Date();
+    }
+
     return await prisma.hotmartEvent.create({
       data: {
         eventType: webhookData.event,
         eventData: webhookData as unknown as Prisma.InputJsonValue,
-        eventDate: new Date(webhookData.eventDate),
+        eventDate: eventDate,
         transaction: webhookData.data.transaction,
         subscriberCode: webhookData.data.subscriberCode,
         productId: webhookData.data.productId,
