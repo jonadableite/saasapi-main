@@ -1,6 +1,6 @@
 // src/services/auto-account.service.ts
 import { PrismaClient } from '@prisma/client';
-import bcrypt from 'bcrypt';
+import * as bcrypt from 'bcrypt';
 import { logger } from '../utils/logger';
 import { welcomeService } from './welcome.service';
 

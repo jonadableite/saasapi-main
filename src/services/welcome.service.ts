@@ -1,6 +1,6 @@
 // src/services/welcome.service.ts
-import axios from "axios";
 import { PrismaClient } from "@prisma/client";
+import axios from 'axios';
 import nodemailer from "nodemailer";
 
 const prisma = new PrismaClient();
